@@ -1,0 +1,120 @@
+<!doctype html>
+<!--
+D’Shinez Gauzy theme walkthrough. This file is the Hyperframes composition source.
+Prepare and render it from the repository root in Bash with Node.js 22+, npm,
+FFmpeg and Chromium available.
+
+stage=$(mktemp -d)
+npm install --prefix "$stage" --no-audit --no-fund --no-save hyperframes@0.9.58
+brand="apps/gauzy/src/assets/branding/dshinez"
+mkdir -p "$stage/assets/fonts"
+cp docs/demo/brag.html "$stage/index.html"
+cp "$brand/wordmark.png" "$brand/app-icon.png" "$stage/assets/"
+cp "$brand/Zain-ExtraLight.ttf" "$stage/assets/fonts/"
+cp "$stage/node_modules/hyperframes/dist/vendor/npm/gsap@3.15.0/dist/gsap.min.js" "$stage/assets/"
+"$stage/node_modules/.bin/hyperframes" check "$stage"
+"$stage/node_modules/.bin/hyperframes" render "$stage" --quality delivery -o "$PWD/docs/demo/dshinez-gauzy-demo.mp4"
+-->
+
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>D’Shinez Gauzy theme preview</title>
+<style>
+@font-face{font-family:Zain;src:url("assets/fonts/Zain-ExtraLight.ttf") format("truetype");font-weight:200}
+*{box-sizing:border-box}
+body{margin:0;width:1920px;height:1080px;overflow:hidden;font-family:Roboto,Arial,sans-serif}
+#root{position:absolute;inset:0;background:#f7f6f3}
+.scene{--paper:#f7f6f3;--panel:#fff;--ink:#151516;--muted:#49494b;--edge:#d7d4cf;--field-edge:#8a8383;--sidebar:#f7f7f7;--field:#fff;--accent:#ed1c24;position:absolute;inset:0;display:grid;grid-template-columns:520px 1fr;align-items:center;gap:94px;padding:104px 128px 132px;background:var(--paper);color:var(--ink)}
+.scene.dark{--paper:#151516;--panel:#1d1d1f;--ink:#f5f5f5;--muted:#c8c8ca;--edge:#38383c;--field-edge:#898288;--sidebar:#19191b;--field:#242426}
+.heading .rule{width:64px;height:6px;background:var(--accent);margin-bottom:36px}
+h1,h2,p{margin:0}
+.heading h1{font-family:Zain,Roboto,Arial,sans-serif;font-size:111px;font-weight:200;line-height:.88;letter-spacing:-1px}
+.heading p{font-size:34px;line-height:1.45;color:var(--muted);margin-top:31px;max-width:480px}
+.disclaimer{position:absolute;bottom:93px;left:128px;font-size:21px;color:var(--muted)}
+.browser{background:var(--panel);border:1px solid var(--edge);border-radius:20px;min-height:740px;box-shadow:0 25px 70px #00000013}
+.browser-bar{height:65px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--edge);font-size:20px;font-weight:700}
+.sign-in{padding:47px 38px 49px;display:flex;justify-content:center}
+.login-card{width:477px;background:var(--panel);border:1px solid var(--edge);border-top:5px solid var(--accent);border-radius:13px;padding:29px 36px 39px}
+.wordmark{box-sizing:content-box;object-fit:contain;padding:11px 15px;background:#fff;border-radius:4px}
+.login-card h2,.dashboard h2{margin-top:16px;font-family:Zain,Roboto,Arial,sans-serif;font-weight:200;font-size:66px;line-height:1.10}
+.login-card p{margin:2px 0 22px;font-size:21px;color:var(--muted)}
+.field-label{font-size:19px;font-weight:500;margin:0 0 7px}
+.field{height:51px;border:1px solid var(--field-edge);border-radius:7px;background:var(--field);margin-bottom:18px}
+.submit{height:49px;line-height:49px;border-radius:8px;background:#c91420;color:#fff;text-align:center;font-size:20px;font-weight:700;margin-top:10px}
+.dashboard{display:grid;grid-template-columns:243px 1fr;min-height:674px}
+.dashboard aside{background:var(--sidebar);padding:24px 17px;font-size:19px;border-right:1px solid var(--edge);border-bottom-left-radius:19px}
+.dashboard aside .wordmark{width:164px;height:auto;margin:0 0 23px 6px}
+.dashboard aside div{padding:13px 12px;margin:0 0 8px}
+.selected{border-left:3px solid var(--accent);background:#472122;border-radius:5px}
+.dashboard main{padding:29px 28px}
+.dashboard h2{margin:0 0 19px}
+.tabs{display:flex;flex-wrap:wrap;gap:7px 20px;font-size:18px;border-bottom:1px solid var(--edge)}
+.tabs span{padding:8px 0 13px}
+.tabs .tab-active{border-bottom:3px solid var(--accent)}
+.project{margin-top:28px;border:1px solid var(--edge);border-radius:10px;padding:26px;font-size:23px}
+.project p{font-size:19px;color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="dshinez-gauzy-preview" data-start="0" data-duration="15" data-width="1920" data-height="1080" data-fps="30">
+<section id="light" class="clip scene" data-start="0" data-duration="5" data-track-index="1">
+  <div class="heading"><div class="rule"></div><h1>D’Shinez<br>Gauzy</h1><p>Ever Gauzy in D’Shinez colours.</p></div>
+  <div class="browser ui">
+  <header class="browser-bar"><img width="24" height="24" src="assets/app-icon.png" alt=""> D’Shinez Holdings</header>
+  <div class="sign-in">
+    <div class="login-card">
+      <img class="wordmark" src="assets/wordmark.png" alt="D’Shinez Holdings" width="250" height="82">
+      <h2>Login</h2>
+      <p>Hello! Log in with your email.</p>
+      <div class="field-label">Email address</div><div class="field"></div>
+      <div class="field-label">Password</div><div class="field"></div>
+      <div class="submit">Login</div>
+    </div>
+  </div>
+</div>
+  <p class="disclaimer">Illustrative theme preview</p>
+</section>
+<section id="dark" class="clip scene dark" data-start="5" data-duration="4.5" data-track-index="1">
+  <div class="heading"><div class="rule"></div><h1>Dark mode</h1><p>The same branded sign-in in low light.</p></div>
+  <div class="browser ui">
+  <header class="browser-bar"><img width="24" height="24" src="assets/app-icon.png" alt=""> D’Shinez Holdings</header>
+  <div class="sign-in">
+    <div class="login-card">
+      <img class="wordmark" src="assets/wordmark.png" alt="D’Shinez Holdings" width="250" height="82">
+      <h2>Login</h2>
+      <p>Hello! Log in with your email.</p>
+      <div class="field-label">Email address</div><div class="field"></div>
+      <div class="field-label">Password</div><div class="field"></div>
+      <div class="submit">Login</div>
+    </div>
+  </div>
+</div>
+  <p class="disclaimer">Illustrative theme preview</p>
+</section>
+<section id="workspace" class="clip scene dark" data-start="9.5" data-duration="5.5" data-track-index="1">
+  <div class="heading"><div class="rule"></div><h1>Branded<br>workspace</h1><p>The D’Shinez identity follows through to the dashboard.</p></div>
+  <div class="browser ui">
+  <header class="browser-bar"><img width="24" height="24" src="assets/app-icon.png" alt=""> D’Shinez Holdings</header>
+  <div class="dashboard">
+    <aside><img class="wordmark" src="assets/wordmark.png" alt="D’Shinez Holdings" width="250" height="82"><div class="selected">Dashboard</div><div>Time Tracking</div><div>Projects</div></aside>
+    <main><h2>Dashboard</h2><div class="tabs"><span>Teams</span><span class="tab-active">Project Management</span><span>Time Tracking</span><span>Accounting</span></div>
+      <div class="project"><b>Example project</b><p>Illustrative workspace</p></div>
+    </main>
+  </div>
+</div>
+  <p class="disclaimer">Illustrative theme preview</p>
+</section>
+</div>
+<script src="assets/gsap.min.js"></script>
+<script>
+const timeline = gsap.timeline({paused:true});
+window.__timelines = window.__timelines || {};
+for (const [id,time] of [["light",0],["dark",5],["workspace",9.5]]) {
+  timeline.fromTo("#"+id+" .ui",{ y:18, opacity:0.87 },{ y:0, opacity:1, duration:0.45, ease:"power2.out" },time);
+  timeline.fromTo("#"+id+" .heading",{ y:14 },{ y:0, duration:0.48, ease:"power2.out" },time+0.05);
+}
+window.__timelines["dshinez-gauzy-preview"] = timeline;
+</script>
+</body>
+</html>

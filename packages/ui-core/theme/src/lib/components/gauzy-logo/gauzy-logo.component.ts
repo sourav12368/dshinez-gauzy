@@ -135,7 +135,7 @@ export class GauzyLogoComponent implements AfterViewInit, OnInit, OnDestroy {
 	}
 
 	ngAfterViewInit() {
-		this._themeService.onThemeChange().subscribe((theme) => {
+		this._themeService.onThemeChange().pipe(untilDestroyed(this)).subscribe((theme) => {
 			this.theme = theme.name;
 			this._cd.detectChanges();
 		});

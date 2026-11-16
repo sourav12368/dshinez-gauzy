@@ -23,17 +23,21 @@ abort_merge() {
 }
 trap abort_merge EXIT
 
-# A merge can fail after creating MERGE_HEAD. Clear workflow-only conflicts
+# A merge can fail after creating MERGE_HEAD. Clear conflicts in fork-managed files
 # before deciding whether source files need manual resolution.
 git merge --no-commit --no-ff "$upstream_tip" ||
 	git rev-parse --verify --quiet MERGE_HEAD >/dev/null
-git restore --source=HEAD --staged --worktree -- .github/workflows
+git restore --source=HEAD --staged --worktree -- .github/workflows README.md
 
 conflicts=$(git diff --name-only --diff-filter=U)
 if [[ -n "$conflicts" ]]; then
 	printf 'Upstream %s requires manual conflict resolution in:\n%s\n' "$upstream_tip" "$conflicts" >&2
 	exit 1
 fi
+
+# Preserve the fork landing page and refresh the upstream documentation beside it.
+git show "$upstream_tip:README.md" > README.upstream.md
+git add README.upstream.md
 
 if ! git diff --cached --quiet -- apps/gauzy/src/assets/branding/dshinez; then
 	printf 'Upstream %s changed the D’Shinez theme assets. Review the merge before publishing.\n' "$upstream_tip" >&2
