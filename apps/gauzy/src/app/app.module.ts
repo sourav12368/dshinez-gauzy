@@ -142,7 +142,14 @@ const FEATURE_MODULES = [
 		{ provide: APP_BASE_HREF, useValue: '/' },
 
 		// Exposes the full environment config to the DI tree via the GAUZY_ENV token.
-		{ provide: GAUZY_ENV, useValue: environment },
+		{
+			provide: GAUZY_ENV,
+			useValue: {
+				...environment,
+				PLATFORM_BRAND_NAME: 'D’Shinez Holdings',
+				PLATFORM_LOGO: 'assets/branding/dshinez/wordmark.png'
+			}
+		},
 
 		// The Ever apps the header's app switcher lists: the catalog the Ever Platform UI module carries in its
 		// plugin options (plugin-ui.config.ts, loaded before bootstrap). Not imported here, so taking the module

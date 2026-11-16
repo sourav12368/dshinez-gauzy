@@ -32,7 +32,8 @@ import { COSMIC_THEME, DARK_THEME, GAUZY_DARK, MATERIAL_DARK_THEME } from '../..
 export class GauzyLogoComponent implements AfterViewInit, OnInit, OnDestroy {
 	public theme: string;
 	public isCollapse = true;
-	public logoUrl: SafeResourceUrl;
+	public logoUrl: SafeResourceUrl | null;
+	public readonly brandName: string;
 
 	/** Active tenant (workspace) shown by the sidebar switcher. */
 	public tenantName = '';
@@ -101,7 +102,10 @@ export class GauzyLogoComponent implements AfterViewInit, OnInit, OnDestroy {
 		private readonly _store: Store,
 		@Inject(GAUZY_ENV) private readonly environment: Environment
 	) {
-		this.logoUrl = this._domSanitizer.bypassSecurityTrustResourceUrl(environment.PLATFORM_LOGO);
+		this.brandName = environment.PLATFORM_BRAND_NAME || 'Gauzy';
+		this.logoUrl = environment.PLATFORM_LOGO
+			? this._domSanitizer.bypassSecurityTrustResourceUrl(environment.PLATFORM_LOGO)
+			: null;
 	}
 
 	ngOnInit(): void {
@@ -169,7 +173,7 @@ export class GauzyLogoComponent implements AfterViewInit, OnInit, OnDestroy {
 	 * @returns true if isSVG is true and the theme is dark; otherwise, false.
 	 */
 	isWhiteSvg(): boolean {
-		return this.isSVG && this.isDarkTheme();
+		return this.isSVG() && this.isDarkTheme();
 	}
 
 	/**

@@ -18,6 +18,7 @@ export interface Environment {
 	MOBILE_APP_DOWNLOAD_LINK?: string;
 	EXTENSION_DOWNLOAD_LINK?: string;
 	PLATFORM_LOGO?: string;
+	PLATFORM_BRAND_NAME?: string;
 
 	COMPANY_NAME: string;
 	COMPANY_LINK: string;

@@ -88,6 +88,10 @@
 					</div>
 				</div>
 
+				@if (platformBrandName && isExpanded()) {
+					<ngx-gauzy-logo class="platform-brand" [isAccordion]="false"></ngx-gauzy-logo>
+				}
+
 				<div class="custom-row menu">
 					<ng-content select="ga-main-nav-menu"></ng-content>
 				</div>

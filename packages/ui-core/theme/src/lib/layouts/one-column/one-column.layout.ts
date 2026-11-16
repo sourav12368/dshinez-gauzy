@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NbLayoutComponent, NbLayoutDirectionService, NbSidebarService } from '@nebular/theme';
+import { GAUZY_ENV } from '@gauzy/ui-config';
 import { ChatSidebarService, LayoutService, NavigationBuilderService, Store } from '@gauzy/ui-core/core';
 import { WindowModeBlockScrollService } from '../../services/window-mode-block-scroll.service';
 import { DEFAULT_SIDEBARS } from '../../components/theme-sidebar/default-sidebars';
@@ -30,6 +31,7 @@ export class OneColumnLayoutComponent {
 	readonly isExpanded = signal(true);
 	readonly isCollapse = signal(true);
 	readonly trigger = signal(true);
+	readonly platformBrandName = inject(GAUZY_ENV, { optional: true })?.PLATFORM_BRAND_NAME;
 
 	readonly layout = viewChild.required(NbLayoutComponent);
 

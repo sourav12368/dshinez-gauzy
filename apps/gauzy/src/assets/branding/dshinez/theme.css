@@ -1,0 +1,133 @@
+@font-face {
+	font-family: 'Zain';
+	src: url('./Zain-ExtraLight.ttf') format('truetype');
+	font-style: normal;
+	font-weight: 200;
+	font-display: swap;
+}
+
+/* Nebular installs its variables on the body for the theme selected by the user. */
+body.dshinez-app {
+	--dshinez-red: #ed1c24;
+	--dshinez-ink: #000000;
+	--dshinez-link: #b31920;
+	--dshinez-field-border: #8a8383;
+	--dshinez-display-font: 'Zain', 'Roboto', Arial, sans-serif;
+	--font-family-primary: 'Roboto', Arial, sans-serif;
+	--font-family-secondary: var(--font-family-primary);
+	--bs-body-font-family: var(--font-family-primary);
+
+	--color-primary-100: #fff0f0;
+	--color-primary-200: #ffcdce;
+	--color-primary-300: #ff9a9e;
+	--color-primary-400: #fa6369;
+	--color-primary-500: var(--dshinez-red);
+	--color-primary-600: #c91420;
+	--color-primary-700: #a81019;
+	--color-primary-800: #800d13;
+	--color-primary-900: #5a090e;
+	--color-primary-transparent-100: rgb(237 28 36 / 8%);
+	--color-primary-transparent-200: rgb(237 28 36 / 16%);
+	--color-primary-transparent-300: rgb(237 28 36 / 24%);
+	--color-primary-transparent-400: rgb(237 28 36 / 32%);
+	--color-primary-transparent-500: rgb(237 28 36 / 40%);
+	--color-primary-transparent-600: rgb(237 28 36 / 48%);
+
+	/* White button labels need the darker reds. */
+	--color-primary-default: var(--color-primary-600);
+	--color-primary-hover: var(--color-primary-700);
+	--color-primary-focus: var(--color-primary-700);
+	--color-primary-active: var(--color-primary-800);
+	--text-primary-color: var(--dshinez-link);
+	--text-primary-hover-color: var(--dshinez-link);
+	--text-primary-focus-color: var(--dshinez-link);
+	--text-primary-active-color: var(--dshinez-link);
+	--link-text-color: var(--dshinez-link);
+	--link-text-hover-color: var(--dshinez-link);
+	--input-basic-focus-border-color: var(--dshinez-link);
+	--layout-background-color: #ffffff;
+	--header-background-color: #ffffff;
+	--sidebar-background-color: #f7f7f7;
+	--gauzy-sidebar-background-2: #f7f7f7;
+	--text-basic-color: var(--dshinez-ink);
+	font-family: var(--font-family-primary);
+}
+
+body.dshinez-app:where(.nb-theme-dark, .nb-theme-gauzy-dark, .nb-theme-cosmic, .nb-theme-material-dark) {
+	--dshinez-link: #ff868b;
+	--dshinez-field-border: #898288;
+	--layout-background-color: #151516;
+	--header-background-color: #151516;
+	--sidebar-background-color: #19191b;
+	--gauzy-sidebar-background-2: #19191b;
+	--text-basic-color: #f5f5f5;
+}
+
+body.dshinez-app ngx-gauzy-logo .logo > img {
+	display: block;
+	box-sizing: content-box;
+	width: clamp(120px, 40vw, 168px);
+	height: auto;
+	max-width: none;
+	padding: 0.875rem;
+	border-radius: 0.25rem;
+	background: #ffffff;
+}
+
+body.dshinez-app ngx-gauzy-logo.platform-brand {
+	display: block;
+	flex-shrink: 0;
+	align-self: flex-start;
+	margin: 0 0.75rem 0.75rem;
+}
+
+body.dshinez-app ngx-header-title {
+	font-family: var(--dshinez-display-font);
+	font-size: 1.5rem;
+	font-weight: 200;
+	letter-spacing: 0.015em;
+}
+
+body.dshinez-app ngx-login .login-wrapper {
+	border-block-start: 3px solid var(--dshinez-red);
+}
+
+/* Keep the demo card available in demo mode. */
+body.dshinez-app ngx-login .login-container:has(ngx-whats-new) {
+	width: min(100%, 440px);
+}
+
+body.dshinez-app ngx-login .features-wrapper:has(ngx-whats-new) {
+	display: none;
+}
+
+/* These login styles override literals in the shared auth component. */
+body.dshinez-app ngx-login .login-wrapper .headings-inner .title {
+	font-family: var(--dshinez-display-font) !important;
+	font-size: 2rem !important;
+	font-weight: 200 !important;
+	line-height: 1.1 !important;
+	letter-spacing: 0.02em !important;
+}
+
+body.dshinez-app ngx-login .login-wrapper :is(.sub-title, .label, .forgot-password-link, .submit-btn) {
+	font-family: var(--font-family-primary) !important;
+}
+
+body.dshinez-app ngx-login .login-container .login-wrapper form .form-control-group input.input-full-width.status-basic {
+	border-color: var(--dshinez-field-border) !important;
+}
+
+body.dshinez-app ngx-login .login-wrapper input.input-full-width:focus-visible {
+	outline: 2px solid var(--dshinez-link);
+	outline-offset: 1px;
+}
+
+body.dshinez-app ngx-login .login-container .login-wrapper .options-row nb-checkbox .custom-checkbox.checked {
+	background-color: var(--color-primary-default) !important;
+	border-color: var(--color-primary-default) !important;
+}
+
+body.dshinez-app ngx-login .login-wrapper :is(.forgot-password-link, .login-magic-wrapper a) {
+	color: var(--dshinez-link) !important;
+}

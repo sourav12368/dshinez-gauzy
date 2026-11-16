@@ -47,12 +47,12 @@
 	<div>
 		<!-- Standalone platform logo (auth screens, onboarding). -->
 		<div class="logo" [class.white-svg]="isWhiteSvg()" (click)="navigateHome()">
-			@if (isSVG) {
-				<object [data]="logoUrl" type="image/svg+xml">
-					<img src="assets/images/logos/logo_Gauzy.png" />
+			@if (isSVG()) {
+				<object [data]="logoUrl" type="image/svg+xml" [attr.aria-label]="brandName">
+					<img src="assets/images/logos/logo_Gauzy.png" [alt]="brandName" />
 				</object>
 			} @else {
-				<img [src]="logoUrl || 'assets/images/logos/logo_Gauzy.png'" />
+				<img [src]="logoUrl || 'assets/images/logos/logo_Gauzy.png'" [alt]="brandName" />
 			}
 		</div>
 	</div>
