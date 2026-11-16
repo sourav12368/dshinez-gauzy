@@ -1,0 +1,11 @@
+:80 {
+	@gauzyApi path /api /api/* /graphql /public/* /swg /swg/* /swg-json /swg-yaml
+	handle @gauzyApi {
+		reverse_proxy api:3000 {
+			header_up -CF-Connecting-IP
+		}
+	}
+	handle {
+		reverse_proxy webapp:4200
+	}
+}

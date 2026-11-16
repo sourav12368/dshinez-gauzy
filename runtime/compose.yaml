@@ -1,0 +1,87 @@
+name: dshinez-gauzy
+x-gauzy: &gauzy
+  NODE_ENV: production
+  DEMO: 'false'
+  DB_TYPE: postgres
+  DB_HOST: db
+  DB_PORT: '5432'
+  DB_NAME: gauzy
+  DB_USER: gauzy
+  DB_PASS: ${DB_PASS:?run the DShinez installer}
+  API_BASE_URL: ${LOCAL_URL}
+  CLIENT_BASE_URL: ${LOCAL_URL}
+  ALLOWED_ORIGINS: ${LOCAL_URL}
+  TRUST_PROXY: '1'
+  REDIS_ENABLED: 'true'
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET}
+  JWT_REFRESH_TOKEN_SECRET: ${JWT_REFRESH_TOKEN_SECRET}
+  JWT_VERIFICATION_TOKEN_SECRET: ${JWT_VERIFICATION_TOKEN_SECRET}
+  EXPRESS_SESSION_SECRET: ${EXPRESS_SESSION_SECRET}
+  DEMO_SUPER_ADMIN_EMAIL: ${DEMO_SUPER_ADMIN_EMAIL}
+  DEMO_SUPER_ADMIN_PASSWORD: ${DEMO_SUPER_ADMIN_PASSWORD}
+  DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD}
+  DEMO_EMPLOYEE_PASSWORD: ${DEMO_EMPLOYEE_PASSWORD}
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gauzy
+      POSTGRES_USER: gauzy
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "gauzy", "-d", "gauzy"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    image: ghcr.io/ever-co/gauzy-api:latest
+    environment: *gauzy
+    entrypoint: ./entrypoint.compose.sh
+    command: [node, main.js]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    volumes:
+      - api_public:/srv/gauzy/apps/api/public
+  worker:
+    image: ghcr.io/ever-co/gauzy-worker:latest
+    environment:
+      <<: *gauzy
+      GAUZY_DOCS_QUEUE_WORKER_ENABLED: 'false'
+    entrypoint: ./entrypoint.compose.sh
+    command: [node, main.js]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      api: { condition: service_started }
+  webapp:
+    build: ./web
+    environment:
+      NODE_ENV: production
+      DEMO: 'false'
+      API_BASE_URL: ${LOCAL_URL}
+      CLIENT_BASE_URL: ${LOCAL_URL}
+      PLATFORM_LOGO: assets/branding/dshinez/wordmark.png
+  gateway:
+    image: caddy:2-alpine
+    ports:
+      - "127.0.0.1:${WEB_PORT}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [webapp, api]
+volumes:
+  db_data:
+  redis_data:
+  api_public:

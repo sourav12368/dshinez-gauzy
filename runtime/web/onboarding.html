@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set up D’Shinez Gauzy</title><style>
+body{margin:0;background:#fafafa;color:#181818;font:16px/1.6 system-ui,sans-serif}main{max-width:37rem;margin:8vh auto;padding:clamp(1.25rem,5vw,3rem);background:white;border-top:4px solid #ed1c24}img{display:block;width:min(250px,100%);height:auto}h1{font-size:clamp(1.8rem,6vw,2.5rem);line-height:1.15}h2{line-height:1.25}button,a{font:inherit}a{color:#b31920;text-underline-offset:.2em}nav{display:flex;gap:.75rem;margin-top:2rem}button{padding:.4rem 1rem;border:1px solid #333;background:white;border-radius:.3rem;cursor:pointer}button+button{background:#c91420;color:white;border-color:#c91420}button:disabled{opacity:.5;cursor:default}:focus-visible{outline:2px solid #b31920;outline-offset:3px}</style>
+<main id="dshinez-onboarding">
+<img src="wordmark.png" alt="D’Shinez Holdings">
+<h1>Set up your workspace</h1>
+<p id="step-number" aria-live="polite"></p>
+<section><h2 tabindex="-1">Sign in as admin</h2><p>Use the email and initial password shown by the installer. Change the initial password in your account settings after signing in.</p><a href="/#/auth/login" target="_blank" rel="noopener">Open Gauzy sign-in ↗</a></section>
+<section><h2 tabindex="-1">Configure your organization</h2><p>Use Gauzy’s workspace setup or Organizations screen to set the company name, timezone and currency.</p><a href="/#/pages/organizations" target="_blank" rel="noopener">Open Organizations ↗</a></section>
+<section><h2 tabindex="-1">Set up your team</h2><p>Add a test employee, assign their role, then create a project and record a short time entry before inviting the rest of the team.</p><a href="/#/pages/employees" target="_blank" rel="noopener">Open Employees ↗</a></section>
+<nav hidden><button id="back" type="button">Back</button><button id="next" type="button">Next</button></nav>
+</main><script src="onboarding.js" defer></script></html>
