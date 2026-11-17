@@ -201,6 +201,11 @@ export interface ITimeLog
 	 * none and is priced at the current rates.
 	 */
 	ratesStored?: boolean | null;
+	/**
+	 * The client rates the log keeps. Answered only on a read that asks for them (`withClientRates`), to a caller who
+	 * may read the client rates of the log's project: an admin, or a manager of the project.
+	 */
+	clientRates?: ITimeLogClientRates;
 }
 
 /**
@@ -220,6 +225,17 @@ export interface ITimeLogStoredRates {
 	/** The currency of the member's client rate on the project. */
 	projectMemberBillRateCurrency?: string | null;
 }
+
+/** The client rates a time log keeps, as a read that asks for them (`withClientRates`) answers them. */
+export type ITimeLogClientRates = Required<
+	Pick<
+		ITimeLogStoredRates,
+		| 'projectBillRateValue'
+		| 'projectMemberBillRateValue'
+		| 'projectBillRateCurrency'
+		| 'projectMemberBillRateCurrency'
+	>
+>;
 
 /**
  * A reminder the platform sent about a running time log (`TimerReminder`): level 1 once the timer ran for the
@@ -498,6 +514,29 @@ export interface IManualTimeInput extends IBasePerTenantAndOrganizationEntityMod
 	isBillable?: boolean;
 }
 
+/**
+ * A split of one stopped time log at a moment of its range (`POST /timesheet/time-log/:id/split`): the log ends at
+ * `splitAt`, and a second log runs from `splitAt` to its old end. The other fields name what the second part changes;
+ * every field left out is copied from the log.
+ */
+export interface ITimeLogSplitInput {
+	/** Where the log is split. On a log of tracked time, a slot boundary (every ten minutes). */
+	splitAt: Date;
+	/** The second part's task, project and notes, when they differ from the log's. */
+	taskId?: ID | null;
+	projectId?: ID | null;
+	description?: string | null;
+	isBillable?: boolean;
+	/** Why the time changes, kept in both parts' history; required where the organization asks for one. */
+	reason?: string | null;
+}
+
+/** The two time logs a split leaves: the log, now ending at the split, and the part after it. */
+export interface ITimeLogSplitResult {
+	first: ITimeLog;
+	second: ITimeLog;
+}
+
 export interface IGetTimeLogInput extends ITimeLogFilters, IBaseRelationsEntityModel {
 	onlyMe?: boolean;
 	timesheetId?: ID;
@@ -515,6 +554,12 @@ export interface IGetTimeLogReportInput extends IGetTimeLogInput {
 	notInvoiced?: boolean;
 	/** Keep breaks (time logs of type BREAK) in a read that lists entries. Totals never count breaks. */
 	includeBreaks?: boolean;
+	/**
+	 * Answer the client rates each log keeps (the entry list and the daily report only), for a caller who may read the
+	 * client rates of every project asked: an admin, or a manager of each project named in `projectIds`. Anyone else
+	 * is refused.
+	 */
+	withClientRates?: boolean;
 }
 
 export interface IGetTimeLogConflictInput extends IBasePerTenantAndOrganizationEntityModel, IBaseRelationsEntityModel {
@@ -561,6 +606,10 @@ export interface IReportDayTaskRow {
 	 */
 	billRateValue?: number | null;
 	billRateCurrency?: string | null;
+	/** Whether the entry's log keeps the rates that price it. Stated with `clientRates` only. */
+	ratesStored?: boolean;
+	/** The client rates the entry's log keeps, on a report that asks for them (`withClientRates`). */
+	clientRates?: ITimeLogClientRates;
 }
 
 export interface IReportDayGroupByDate {
