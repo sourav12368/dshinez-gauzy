@@ -1,0 +1,65 @@
+name: D’Shinez ARM64 containers
+
+on:
+  push:
+    branches: [dshinez-arm64]
+    tags: ['dshinez-arm64-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: dshinez-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    env:
+      DSHINEZ_IMAGE_PREFIX: ghcr.io/sourav12368/dshinez-gauzy
+      DSHINEZ_IMAGE_TAG: arm64-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Prepare the ARM64 startup helper
+        run: |
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/ufoscout/docker-compose-wait/releases/download/2.12.1/wait_aarch64 \
+            --output wait.arm64
+          sha256sum --check <<< '507ad24ae0b653202c742fae4e6efd361e80d28aab374ad0cb801c454af7edf9  wait.arm64'
+          mv wait.arm64 wait
+
+      - name: Build ARM64 images
+        run: |
+          for service in api worker webapp; do
+            docker buildx build --load --platform linux/arm64 \
+              --file ".deploy/$service/Dockerfile" \
+              --tag "$DSHINEZ_IMAGE_PREFIX/$service:$DSHINEZ_IMAGE_TAG" \
+              --build-arg NODE_ENV=production --build-arg DEMO=false \
+              --build-arg 'NODE_OPTIONS=--max-old-space-size=10240' \
+              --build-arg "GAUZY_APP_COMMIT=$GITHUB_SHA" \
+              --build-arg "GAUZY_APP_VERSION=$(node -p 'require("./package.json").version')" .
+            docker builder prune --all --force
+          done
+
+      - name: Check HTTPS, login, branding and the worker
+        run: bash tools/dshinez/smoke-arm64.sh
+
+      - name: Publish the verified images
+        if: github.repository == 'sourav12368/dshinez-gauzy' && (github.ref == 'refs/heads/dshinez-arm64' || startsWith(github.ref, 'refs/tags/dshinez-arm64-'))
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          for service in api worker webapp; do
+            docker push "$DSHINEZ_IMAGE_PREFIX/$service:$DSHINEZ_IMAGE_TAG"
+          done
