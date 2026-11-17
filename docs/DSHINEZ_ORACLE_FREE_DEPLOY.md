@@ -27,15 +27,14 @@ The OCI Always Free service includes 2 OCPUs/12 GB of Ampere A1 in
 the home region and 200 GB of combined boot/block storage. Keep within
 these combined limits; do not upgrade the tenancy or use paid shapes.
 
-## Remaining work
+## Launch checklist
 
 1. Wait for A1 capacity to become available. Do not hammer the Create
    endpoint when it reports rate limiting. Confirm an instance is
    actually in Running state and note its public IPv4 address.
-2. In the public subnet's **default security list**, allow stateful TCP
-   ingress from `0.0.0.0/0` to ports **80 and 443 only** (in addition
-   to the existing SSH/ICMP rules). The draft was prepared in the Oracle
-   console but **submitted and verified** on 17 November 2026. Existing SSH/ICMP rules were preserved.
+2. **Done:** Stateful TCP ingress from `0.0.0.0/0` to ports **80** and
+   **443** was saved and verified in the VCN default security list.
+   Existing SSH/ICMP rules were preserved.
 3. Create a DNS A record for the intended host
    `crm.dshinez.com` pointing to the new instance's public IP. Do
    not change existing `www` or apex DNS records.
