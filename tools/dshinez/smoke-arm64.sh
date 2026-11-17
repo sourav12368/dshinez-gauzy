@@ -18,7 +18,7 @@ trap cleanup EXIT
 
 for service in api worker webapp; do
   image="$DSHINEZ_IMAGE_PREFIX/$service:$DSHINEZ_IMAGE_TAG"
-  [[ $(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image") == linux/arm64 ]]
+  [[ $(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image") == "${DSHINEZ_IMAGE_PLATFORM:-linux/arm64}" ]]
 done
 
 admin_email=arm-smoke@example.com

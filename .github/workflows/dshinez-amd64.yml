@@ -1,0 +1,68 @@
+name: D'Shinez AMD64 containers
+
+on:
+  push:
+    branches: [dshinez-amd64]
+
+permissions:
+  contents: read
+  packages: write
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: dshinez-amd64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    if: github.repository == 'sourav12368/dshinez-gauzy' && github.ref == 'refs/heads/dshinez-amd64'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      DSHINEZ_IMAGE_PREFIX: ghcr.io/sourav12368/dshinez-gauzy
+      DSHINEZ_IMAGE_TAG: amd64-${{ github.sha }}
+      DSHINEZ_IMAGE_PLATFORM: linux/amd64
+      DSHINEZ_SOURCE_SHA: fae19b21615701ff15875fb4602f9ccb60b41108
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Verify the pinned source and native startup helper
+        run: |
+          git fetch --depth=1 --no-tags origin "$DSHINEZ_SOURCE_SHA"
+          if ! git diff --quiet "$DSHINEZ_SOURCE_SHA" HEAD -- . \
+            ':(exclude).github/workflows/dshinez-amd64.yml' \
+            ':(exclude)tools/dshinez/smoke-arm64.sh'; then
+            echo 'The application source differs from the reviewed snapshot.' >&2
+            exit 1
+          fi
+          sha256sum --check <<< 'b945d1bc2b6bac5b8998bdc56791a66d99085432a6b164ef6726c52653f4b8d5  wait'
+
+      - name: Build AMD64 images
+        run: |
+          for service in api worker webapp; do
+            docker buildx build --load --platform "$DSHINEZ_IMAGE_PLATFORM" \
+              --file ".deploy/$service/Dockerfile" \
+              --tag "$DSHINEZ_IMAGE_PREFIX/$service:$DSHINEZ_IMAGE_TAG" \
+              --build-arg NODE_ENV=production --build-arg DEMO=false \
+              --build-arg 'NODE_OPTIONS=--max-old-space-size=10240' \
+              --build-arg "GAUZY_APP_COMMIT=$GITHUB_SHA" \
+              --build-arg "GAUZY_APP_VERSION=$(node -p 'require("./package.json").version')" .
+            docker builder prune --all --force
+          done
+
+      - name: Check HTTPS, login, branding and the worker
+        run: bash tools/dshinez/smoke-arm64.sh
+
+      - name: Publish the verified images
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          for service in api worker webapp; do
+            docker push "$DSHINEZ_IMAGE_PREFIX/$service:$DSHINEZ_IMAGE_TAG"
+          done
