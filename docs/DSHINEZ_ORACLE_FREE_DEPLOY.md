@@ -1,6 +1,6 @@
 # D'Shinez Gauzy — Oracle Always Free deployment
 
-Status (17 November 2026): **NOT LIVE**. Oracle Hyderabad AD-1 returned
+Status (17 November 2026): **NOT LIVE**. Public TCP 80/443 rules are now saved and verified; no VM has been allocated. Oracle Hyderabad AD-1 returned
 `Out of capacity for shape VM.Standard.A1.Flex` for both 2 OCPU/12 GB
 and 1 OCPU/6 GB requests; an intermediate request also hit a temporary
 user rate limit. Do not claim a VPS or public address has been allocated.
@@ -17,8 +17,8 @@ user rate limit. Do not claim a VPS or public address has been allocated.
 - Internet gateway `dshinez-gauzy-igw`; VCN default route
   `0.0.0.0/0` points to the gateway.
 - Planned VM: `dshinez-gauzy-arm64`, Ubuntu 24.04 Minimal aarch64,
-  `VM.Standard.A1.Flex` (1 OCPU / 6 GB prepared for the next capacity
-  attempt; preferably 2 OCPU / 12 GB if available), 100 GB boot volume
+  `VM.Standard.A1.Flex` (2 OCPU / 12 GB selected in a new request,
+  but not submitted after the Oracle browser stalled), 100 GB boot volume
   at 10 VPUs, public IPv4, automatic fault domain.
 - User reported saving the generated SSH private key
   corresponding to `ssh-key-2026-11-17`. Never place the key in Git.
@@ -35,7 +35,7 @@ these combined limits; do not upgrade the tenancy or use paid shapes.
 2. In the public subnet's **default security list**, allow stateful TCP
    ingress from `0.0.0.0/0` to ports **80 and 443 only** (in addition
    to the existing SSH/ICMP rules). The draft was prepared in the Oracle
-   console but **not submitted** as of this note.
+   console but **submitted and verified** on 17 November 2026. Existing SSH/ICMP rules were preserved.
 3. Create a DNS A record for the intended host
    `crm.dshinez.com` pointing to the new instance's public IP. Do
    not change existing `www` or apex DNS records.
