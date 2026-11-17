@@ -1,0 +1,15 @@
+# OCI Always Free tuned overlay for the D'Shinez Caddy + ARM64 stack.
+# Run in order: docker-compose.caddy.yml, docker-compose.dshinez-arm64.yml,
+# then docker-compose.dshinez-oracle.yml. No application or database ports
+# are exposed directly; only Caddy publishes TCP 80/443.
+services:
+  api:
+    environment:
+      DB_POOL_SIZE: '10'
+      DB_POOL_SIZE_KNEX: '5'
+      APP_USER_REGISTRATION: 'false'
+      ALLOW_TENANTS_REGISTRATION: 'false'
+  worker:
+    environment:
+      DB_POOL_SIZE: '5'
+      DB_POOL_SIZE_KNEX: '2'
