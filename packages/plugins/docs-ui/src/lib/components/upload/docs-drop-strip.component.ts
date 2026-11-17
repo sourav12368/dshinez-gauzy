@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import { NbTrigger } from '@nebular/theme';
 import { humanizeBytes } from '../../models/docs-format.util';
 
 /**
@@ -21,6 +22,8 @@ import { humanizeBytes } from '../../models/docs-format.util';
 	standalone: false
 })
 export class DocsDropStripComponent {
+	readonly focusTooltipTrigger = NbTrigger.FOCUS;
+
 	/** Mirrors the page-wide dropzone's drag state (highlight while a drag hovers the page). */
 	@Input() active = false;
 	/** Live org limit (`GET /settings` capabilities via UploadQueueService), not the constant. */
