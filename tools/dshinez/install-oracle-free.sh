@@ -62,7 +62,7 @@ done
 # only resource and registration hardening; the three service images remain
 # pinned to the CI-verified release_sha above.
 curl --fail --location --silent --show-error --retry 3 \
-  "https://raw.githubusercontent.com/sourav12368/dshinez-gauzy/dshinez-arm64/docker-compose.dshinez-oracle.yml" \
+  "https://raw.githubusercontent.com/sourav12368/dshinez-gauzy/ab4ad7c67e559dcaf6e517383de0ed63fb832e2d/docker-compose.dshinez-oracle.yml" \
   --output docker-compose.dshinez-oracle.yml
 
 umask 077
