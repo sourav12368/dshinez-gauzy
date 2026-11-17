@@ -17,15 +17,36 @@ user rate limit. Do not claim a VPS or public address has been allocated.
 - Internet gateway `dshinez-gauzy-igw`; VCN default route
   `0.0.0.0/0` points to the gateway.
 - Planned VM: `dshinez-gauzy-arm64`, Ubuntu 24.04 Minimal aarch64,
-  `VM.Standard.A1.Flex` (2 OCPU / 12 GB selected in a new request,
-  but not submitted after the Oracle browser stalled), 100 GB boot volume
-  at 10 VPUs, public IPv4, automatic fault domain.
+  `VM.Standard.A1.Flex` (2 OCPU / 12 GB), 100 GB boot volume at
+  10 VPUs, public IPv4, automatic fault domain. A complete, verified
+  browser Create request on 17 November 2026 was rejected by OCI
+  with the AD-1 A1 shape out-of-capacity API error.
 - User reported saving the generated SSH private key
   corresponding to `ssh-key-2026-11-17`. Never place the key in Git.
 
 The OCI Always Free service includes 2 OCPUs/12 GB of Ampere A1 in
 the home region and 200 GB of combined boot/block storage. Keep within
 these combined limits; do not upgrade the tenancy or use paid shapes.
+
+## Latest allocation attempt (17 November 2026)
+
+- Browser review showed Canonical Ubuntu 24.04 Minimal **aarch64**,
+  `VM.Standard.A1.Flex` **Always Free-eligible** with **2 OCPUs / 12 GB**,
+  `dshinez-gauzy-vcn` / `dshinez-gauzy-public`, automatically assigned
+  public IPv4, **100 GB / 10 VPU** encrypted boot volume, and no
+  separately attached block volumes.
+- Root compartment boot-volume and block-volume inventories were both
+  empty before submission. Oracle's official Always Free limits are
+  **2 A1 OCPUs / 12 GB** and **200 GB combined boot/block storage** in
+  the home region. The console's **$5.87/month list estimate** said it
+  excludes tier pricing, so it is not an actual confirmed bill.
+- **Create was submitted once** and returned: `Out of capacity for shape
+  VM.Standard.A1.Flex in availability domain AD-1`. There is **no VM,
+  public IPv4 address, DNS change, or Gauzy live service**. Do not
+  retry rapidly, use trial credits, or upgrade to paid shapes.
+- The wizard generated an SSH key and its **Download private key** button
+  was clicked, but browser download confirmation timed out. Confirm the
+  matching private key is safely available locally before attempting SSH.
 
 ## Launch checklist
 
