@@ -13,6 +13,22 @@ body.dshinez-app {
 	--dshinez-link: #b31920;
 	--dshinez-field-border: #8a8383;
 	--dshinez-display-font: 'Zain', 'Roboto', Arial, sans-serif;
+	--dshinez-radius-panel: 1rem;
+	--dshinez-radius-control: 0.625rem;
+	--dshinez-panel-shadow: 0 1px 2px rgb(31 20 16 / 6%), 0 6px 18px rgb(31 20 16 / 5%);
+	--dshinez-note-shadow: 0 1px 2px rgb(62 41 15 / 9%), 0 4px 8px rgb(62 41 15 / 6%);
+	--dshinez-note: #fff6db;
+	--dshinez-note-edge: #dbc38d;
+	--dshinez-note-done: #f3f4ef;
+	--dshinez-note-done-edge: #b8c2b0;
+	--dshinez-note-muted: #594b38;
+	--dshinez-board-lane: #f2efeb;
+	--border-radius: var(--dshinez-radius-panel);
+	--card-border-radius: var(--dshinez-radius-panel);
+	--card-shadow: var(--dshinez-panel-shadow);
+	--button-rectangle-border-radius: var(--dshinez-radius-control);
+	--input-rectangle-border-radius: var(--dshinez-radius-control);
+	--select-rectangle-border-radius: var(--dshinez-radius-control);
 	--font-family-primary: 'Roboto', Arial, sans-serif;
 	--font-family-secondary: var(--font-family-primary);
 	--bs-body-font-family: var(--font-family-primary);
@@ -45,7 +61,7 @@ body.dshinez-app {
 	--link-text-color: var(--dshinez-link);
 	--link-text-hover-color: var(--dshinez-link);
 	--input-basic-focus-border-color: var(--dshinez-link);
-	--layout-background-color: #ffffff;
+	--layout-background-color: #f8f7f5;
 	--header-background-color: #ffffff;
 	--sidebar-background-color: #f7f7f7;
 	--gauzy-sidebar-background-2: #f7f7f7;
@@ -56,6 +72,14 @@ body.dshinez-app {
 body.dshinez-app:where(.nb-theme-dark, .nb-theme-gauzy-dark, .nb-theme-cosmic, .nb-theme-material-dark) {
 	--dshinez-link: #ff868b;
 	--dshinez-field-border: #898288;
+	--dshinez-panel-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 18px rgb(0 0 0 / 20%);
+	--dshinez-note-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 4px 8px rgb(0 0 0 / 22%);
+	--dshinez-note: #342b1c;
+	--dshinez-note-edge: #9c8354;
+	--dshinez-note-done: #262e26;
+	--dshinez-note-done-edge: #788d73;
+	--dshinez-note-muted: #e2d0ac;
+	--dshinez-board-lane: #232224;
 	--layout-background-color: #151516;
 	--header-background-color: #151516;
 	--sidebar-background-color: #19191b;
@@ -131,4 +155,146 @@ body.dshinez-app ngx-login .login-container .login-wrapper .options-row nb-check
 
 body.dshinez-app ngx-login .login-wrapper :is(.forgot-password-link, .login-magic-wrapper a) {
 	color: var(--dshinez-link) !important;
+}
+
+/* Regular panels share the same elevation. Warm paper surfaces are reserved for work items. */
+body.dshinez-app :is(
+	ga-dashboard-widget-host .widget-card,
+	gauzy-project-management-details .pm-grid > .panel,
+	ngx-tasks > nb-card,
+	ngx-login .login-wrapper
+) {
+	border-radius: var(--dshinez-radius-panel);
+	box-shadow: var(--dshinez-panel-shadow);
+}
+
+body.dshinez-app :where(ga-pm-my-tasks-widget, ga-pm-recently-assigned-widget) .pm-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+	align-content: start;
+	gap: 0.75rem;
+	padding: 0.25rem 0.375rem 0.625rem 0.25rem;
+}
+
+body.dshinez-app gauzy-project-management-details .panel--tasks .task-row--head {
+	position: absolute;
+	inline-size: 1px;
+	block-size: 1px;
+	min-inline-size: 0;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+body.dshinez-app gauzy-project-management-details .panel--tasks .task-table > .task-body {
+	display: grid;
+	min-inline-size: 0;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+	align-content: start;
+	gap: 0.75rem;
+	padding: 0.75rem;
+}
+
+body.dshinez-app gauzy-project-management-details .task-body > :is(.pm-state, .show-more) {
+	grid-column: 1 / -1;
+}
+
+body.dshinez-app :is(
+	ga-pm-my-tasks-widget .task-row,
+	ga-pm-recently-assigned-widget .assigned-row,
+	gauzy-project-management-details .task-row--interactive,
+	ngx-tasks ga-card-grid .card-item,
+	ga-project-board .board-card
+) {
+	border: 1px solid var(--dshinez-note-edge);
+	border-block-start-width: 3px;
+	border-radius: var(--dshinez-radius-panel);
+	background-color: var(--dshinez-note);
+	box-shadow: var(--dshinez-note-shadow);
+	color: var(--text-basic-color);
+}
+
+body.dshinez-app :is(ga-pm-my-tasks-widget .task-row, ga-pm-recently-assigned-widget .assigned-row) {
+	padding: 0.625rem 0.75rem;
+}
+
+body.dshinez-app gauzy-project-management-details .task-table .task-row--interactive {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	min-inline-size: 0;
+	min-block-size: 44px;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	border-block-start: 3px solid var(--dshinez-note-edge);
+}
+
+body.dshinez-app gauzy-project-management-details .task-row--interactive > :is(.task-main, .task-cell:nth-child(2)) {
+	grid-column: 1 / -1;
+}
+
+body.dshinez-app gauzy-project-management-details .task-row--interactive:is(:hover, .is-viewed) {
+	border-color: var(--dshinez-link);
+}
+
+body.dshinez-app :is(
+	ga-pm-my-tasks-widget .task-row:has(.task-dot.checked),
+	gauzy-project-management-details .task-table .task-row--interactive.is-closed,
+	ga-project-board .board-card.is-done
+) {
+	border-color: var(--dshinez-note-done-edge);
+	background-color: var(--dshinez-note-done);
+}
+
+body.dshinez-app :is(ga-pm-my-tasks-widget, ga-pm-recently-assigned-widget) .pm-title,
+body.dshinez-app gauzy-project-management-details .task-row--interactive .task-title,
+body.dshinez-app ga-project-board .board-card-title {
+	display: block;
+	color: var(--text-basic-color);
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1.4;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+body.dshinez-app :is(ga-pm-my-tasks-widget .task-status, ga-project-board .board-card-meta) {
+	color: var(--dshinez-note-muted);
+	font-size: 0.75rem;
+}
+
+body.dshinez-app ngx-tasks ga-card-grid .card-layout {
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+	padding-block: 0.25rem 0.625rem;
+}
+
+body.dshinez-app ngx-tasks ga-card-grid .card-item .card-body:not(.active) {
+	background-color: transparent;
+}
+
+body.dshinez-app ngx-tasks ga-card-grid .card-item .card-body {
+	border-radius: var(--dshinez-radius-panel);
+}
+
+body.dshinez-app ga-project-board .board-panel .board-column:not(.is-drop-target, .is-refusing) {
+	border-radius: var(--dshinez-radius-panel);
+	background-color: var(--dshinez-board-lane);
+}
+
+body.dshinez-app ga-project-board .board-card {
+	min-block-size: 44px;
+}
+
+body.dshinez-app :is(ga-project-board .board-card, gauzy-project-management-details .task-row--interactive):focus-visible {
+	outline: 2px solid var(--dshinez-link);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body.dshinez-app ga-project-board :is(.board-card, .board-card-item.cdk-drag-animating) {
+		transition: none;
+	}
+
+	body.dshinez-app gauzy-project-management-details .task-row--interactive {
+		transition: none;
+	}
 }
