@@ -107,6 +107,38 @@ body.dshinez-app ngx-login .login-wrapper > section:has(> ngx-social-links) + .h
 	display: none;
 }
 
+/* Match the employee-login brand treatment on password recovery screens.
+ * The same approved wordmark stays proportionate and readable in either theme. */
+body.dshinez-app :is(ngx-forgot-password, ngx-reset-password) :is(.forgot-password-wrapper, .reset-password-wrapper) {
+	border-block-start: 3px solid var(--dshinez-red);
+}
+
+body.dshinez-app :is(ngx-forgot-password, ngx-reset-password) .svg-wrapper ngx-gauzy-logo .logo > img {
+	box-sizing: border-box;
+	width: min(100%, 12rem);
+	height: auto !important;
+	max-height: none;
+	aspect-ratio: auto;
+	object-fit: contain;
+}
+
+body.dshinez-app :is(ngx-forgot-password, ngx-reset-password) .title {
+	font-family: var(--dshinez-display-font) !important;
+	font-size: 2rem !important;
+	font-weight: 200 !important;
+	line-height: 1.1 !important;
+	letter-spacing: 0.02em !important;
+}
+
+body.dshinez-app :is(ngx-forgot-password, ngx-reset-password) .text-link {
+	color: var(--dshinez-link) !important;
+}
+
+body.dshinez-app :is(ngx-forgot-password, ngx-reset-password) input.input-full-width:focus-visible {
+	outline: 2px solid var(--dshinez-link);
+	outline-offset: 1px;
+}
+
 /* Keep the demo card available in demo mode. */
 body.dshinez-app ngx-login .login-container:has(ngx-whats-new) {
 	width: min(100%, 440px);
