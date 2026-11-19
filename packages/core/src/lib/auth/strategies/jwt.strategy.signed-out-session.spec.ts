@@ -26,7 +26,8 @@ import { ACCESS_TOKEN_USE_RESOLUTION_MS, JwtStrategy } from './jwt.strategy';
  * A session its user signed out from another session ends at its next request (ever-co/ever-gauzy#11921): the strategy
  * reads the session's sign-out marker by the session its payload names, and the access token's stored record by the id
  * it carries, and refuses the token when the session is marked or the token was revoked by a session sign-out. Every
- * other token is judged as before, a logged-out one included.
+ * Legacy revoked tokens retain their original handling, but tokens logged out after the matching revocation reason
+ * is applied by AuthService are rejected on the next request.
  */
 describe('JwtStrategy: a signed-out session', () => {
 	const payload = { id: 'user-1', tenantId: 'tenant', tokenId: 'access-token-1', tokenType: 'ACCESS_TOKEN_TYPE' };
@@ -85,8 +86,20 @@ describe('JwtStrategy: a signed-out session', () => {
 		expect(accessTokenService.findById).toHaveBeenCalledWith('access-token-1');
 	});
 
+	it('refuses a token revoked by a current user-initiated logout', async () => {
+		const { strategy, accessTokenService } = build({
+			id: 'access-token-1',
+			status: TokenStatus.REVOKED,
+			revokedReason: USER_SESSION_SIGNED_OUT_REASON,
+			lastUsedAt: new Date()
+		});
+
+		await expect(strategy.validate(payload)).rejects.toThrow(UnauthorizedException);
+		expect(accessTokenService.touch).not.toHaveBeenCalled();
+	});
+
 	it.each([
-		['logged out', 'User initiated logout'],
+		['revoked by a legacy logout before the reason was aligned', 'User initiated logout'],
 		['revoked by the inactivity clean-up', 'Inactivity timeout']
 	])('accepts a token %s, as before', async (_how, revokedReason) => {
 		const { strategy } = build({
@@ -163,7 +176,7 @@ describe('JwtStrategy: a signed-out session', () => {
 		});
 	});
 
-	it('never records the use of a revoked token: a logged-out one, still usable until it expires', async () => {
+	it('never records the use of an older logout-revoked token that is still usable until it expires', async () => {
 		const { strategy, accessTokenService } = build({
 			id: 'access-token-1',
 			status: TokenStatus.REVOKED,
