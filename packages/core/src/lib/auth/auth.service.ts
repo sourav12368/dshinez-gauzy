@@ -9,7 +9,7 @@ import {
 	SocialSignInAuthData
 } from '@gauzy/auth';
 import { IAppIntegrationConfig } from '@gauzy/common';
-import { environment } from '@gauzy/config';
+import { DEFAULT_JWT_REFRESH_TOKEN_EXPIRATION_TIME, environment } from '@gauzy/config';
 import { DEMO_PASSWORD_LESS_MAGIC_CODE } from '@gauzy/constants';
 import {
 	IAuthResponse,
@@ -68,6 +68,7 @@ import { DataSource, DeepPartial, EntityManager, In, IsNull, MoreThanOrEqual, No
 import { pick } from 'underscore';
 import { AccessTokenService } from '../access-token/access-token.service';
 import { accessTokenCarriesPermissions } from './access-token-claims';
+import { USER_SESSION_SIGNED_OUT_REASON } from './user-session/user-session-revocation';
 import { IAccessTokenMetadata } from '../access-token/type.token';
 import { EmployeeService } from '../employee/employee.service';
 import { TypeOrmEmployeeRepository } from '../employee/repository/type-orm-employee.repository';
@@ -155,6 +156,7 @@ import {
 } from './oauth-app-scope';
 import {
 	IUserSessionClaims,
+	currentRequestSessionClaims,
 	keepSessionForRequest,
 	readSessionClaims,
 	sessionForMint,
@@ -4057,9 +4059,11 @@ export class AuthService extends SocialAuthService {
 	 * @param refreshToken The refresh token to be revoked. This is optional as the function will attempt to revoke the current access token regardless.
 	 */
 	public async logout(refreshToken?: string): Promise<void> {
-		const reason = 'User initiated logout';
+		// Keep logout revocation consistent with JwtStrategy so the access token cannot be reused after signing out.
+		const reason = USER_SESSION_SIGNED_OUT_REASON;
 		const currentToken = RequestContext.currentToken();
 		const currentUserId = RequestContext.currentUserId();
+		const currentSession = currentRequestSessionClaims();
 
 		const revocations: Promise<unknown>[] = [
 			this.userService.removeRefreshToken().catch((error) => {
@@ -4067,6 +4071,23 @@ export class AuthService extends SocialAuthService {
 				Logger.error('Error while removing refresh token from user record:', error?.message);
 			})
 		];
+
+		// Also invalidate every access/refresh token of this sign-in, including a token minted by a concurrent refresh.
+		// Legacy requests without a session id retain the single-token behavior below.
+		if (currentUserId && currentSession) {
+			const accessTtl = Number(environment.JWT_TOKEN_EXPIRATION_TIME) || 86400;
+			const refreshTtl =
+				Number(environment.JWT_REFRESH_TOKEN_EXPIRATION_TIME) || DEFAULT_JWT_REFRESH_TOKEN_EXPIRATION_TIME;
+			const expiresAt = new Date(Date.now() + Math.max(accessTtl, refreshTtl) * 1000);
+			revocations.push(
+				this.accessTokenService.markSessionSignedOut(
+					currentUserId,
+					currentSession.sessionId,
+					expiresAt,
+					reason
+				)
+			);
+		}
 
 		if (refreshToken) {
 			revocations.push(
@@ -4086,6 +4107,10 @@ export class AuthService extends SocialAuthService {
 			);
 		}
 
-		await Promise.allSettled(revocations);
+		const results = await Promise.allSettled(revocations);
+		// Logout must not report success when a named session could still mint/use another access token.
+		if (results.some((result) => result.status === 'rejected')) {
+			throw new ServiceUnavailableException('Could not securely complete session logout; please try again.');
+		}
 	}
 }

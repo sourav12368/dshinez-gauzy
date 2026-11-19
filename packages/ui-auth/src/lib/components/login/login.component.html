@@ -4,11 +4,13 @@
 			<ngx-gauzy-logo [isAccordion]="false" class="ever-logo-svg"></ngx-gauzy-logo>
 			<gauzy-switch-theme class="theme-switch" [hasText]="false"></gauzy-switch-theme>
 		</div>
-		<div class="headings" [class]="isDemo ? 'headings-demo' : ''">
+		<div class="headings" [class]="isDemo && !isDshinez ? 'headings-demo' : ''">
 			<div class="headings-inner">
-				<h2 id="title" class="title">{{ 'LOGIN_PAGE.TITLE' | translate }}</h2>
+				<h2 id="title" class="title">
+					{{ isDshinez ? 'Employee sign in' : ('LOGIN_PAGE.TITLE' | translate) }}
+				</h2>
 				<p class="sub-title">{{ 'LOGIN_PAGE.SUB_TITLE' | translate }}</p>
-				@if (!electronService?.isElectron && isDemo) {
+				@if (!isDshinez && !electronService?.isElectron && isDemo) {
 				<nb-accordion class="demo-credentials-select">
 					<nb-accordion-item class="demo-credentials-select-item">
 						<nb-accordion-item-header class="demo-credentials-header">
@@ -67,7 +69,7 @@
 		<form (ngSubmit)="login()" #form="ngForm" aria-labelledby="title">
 			<div class="form-control-group">
 				<label class="label" for="input-email">
-					{{ 'LOGIN_PAGE.LABELS.EMAIL' | translate }}
+					{{ isDshinez ? 'Work email' : ('LOGIN_PAGE.LABELS.EMAIL' | translate) }}
 				</label>
 				<input
 					nbInput
@@ -84,7 +86,7 @@
 					[status]="email.dirty ? (email.invalid ? 'danger' : 'success') : 'basic'"
 					[required]="getConfigValue('forms.validation.email.required')"
 					[attr.aria-invalid]="email.invalid && email.touched ? true : null"
-					autocomplete="off"
+					autocomplete="username"
 				/>
 				@if (email.invalid && email.touched) {
 				<ng-container>
@@ -122,7 +124,7 @@
 						[minlength]="getConfigValue('forms.validation.password.minLength')"
 						[maxlength]="getConfigValue('forms.validation.password.maxLength')"
 						[attr.aria-invalid]="password.invalid && password.touched ? true : null"
-						autocomplete="off"
+						autocomplete="current-password"
 					/>
 					<a
 						nbSuffix
@@ -203,12 +205,13 @@
 				</a>
 			</div>
 		</form>
-		<div class="hr-div-soft"></div>
-		<section>
-			<ngx-social-links></ngx-social-links>
-		</section>
-		<div class="hr-div-soft"></div>
-		<div class="another-actions">
+		@if (!isDshinez) {
+			<div class="hr-div-soft"></div>
+			<section>
+				<ngx-social-links></ngx-social-links>
+			</section>
+			<div class="hr-div-soft"></div>
+			<div class="another-actions">
 			<section class="another-action" aria-label="Sign In Workspace">
 				{{ 'WORKSPACES.UNKNOWN_WORKSPACE' | translate }}
 				<a class="text-link" routerLink="/auth/login-workspace">
@@ -226,9 +229,11 @@
 					{{ 'DELETE_ACCOUNT_PAGE.LOGIN_LINK' | translate }}
 				</a>
 			</section>
-		</div>
+			</div>
+		}
 	</div>
-	<div class="features-wrapper">
+	@if (!isDshinez) {
+		<div class="features-wrapper">
 		@if (!electronService?.isElectron && isDemo) {
 		<ng-container>
 			<div class="demo-credentials-buttons">
@@ -275,5 +280,6 @@
 				<ngx-whats-new></ngx-whats-new>
 			</div>
 		}
-	</div>
+		</div>
+	}
 </section>
