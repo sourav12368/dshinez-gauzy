@@ -93,6 +93,20 @@ body.dshinez-app ngx-login .login-wrapper {
 	border-block-start: 3px solid var(--dshinez-red);
 }
 
+body.dshinez-app ngx-login .login-wrapper .svg-wrapper ngx-gauzy-logo .logo > img {
+	box-sizing: border-box;
+	width: min(100%, 12rem);
+	height: auto !important;
+	max-height: none;
+	aspect-ratio: auto;
+	object-fit: contain;
+}
+
+body.dshinez-app ngx-login .login-wrapper > section:has(> ngx-social-links),
+body.dshinez-app ngx-login .login-wrapper > section:has(> ngx-social-links) + .hr-div-soft {
+	display: none;
+}
+
 /* Keep the demo card available in demo mode. */
 body.dshinez-app ngx-login .login-container:has(ngx-whats-new) {
 	width: min(100%, 440px);
