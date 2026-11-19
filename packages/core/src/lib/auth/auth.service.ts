@@ -68,6 +68,7 @@ import { DataSource, DeepPartial, EntityManager, In, IsNull, MoreThanOrEqual, No
 import { pick } from 'underscore';
 import { AccessTokenService } from '../access-token/access-token.service';
 import { accessTokenCarriesPermissions } from './access-token-claims';
+import { USER_SESSION_SIGNED_OUT_REASON } from './user-session/user-session-revocation';
 import { IAccessTokenMetadata } from '../access-token/type.token';
 import { EmployeeService } from '../employee/employee.service';
 import { TypeOrmEmployeeRepository } from '../employee/repository/type-orm-employee.repository';
@@ -4057,7 +4058,8 @@ export class AuthService extends SocialAuthService {
 	 * @param refreshToken The refresh token to be revoked. This is optional as the function will attempt to revoke the current access token regardless.
 	 */
 	public async logout(refreshToken?: string): Promise<void> {
-		const reason = 'User initiated logout';
+		// Keep logout revocation consistent with JwtStrategy so the access token cannot be reused after signing out.
+		const reason = USER_SESSION_SIGNED_OUT_REASON;
 		const currentToken = RequestContext.currentToken();
 		const currentUserId = RequestContext.currentUserId();
 
