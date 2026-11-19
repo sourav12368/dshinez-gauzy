@@ -1,0 +1,15 @@
+# Opt-in D'Shinez PostgreSQL storage override. NOT a migration or an encryption provider.
+# Use only after a separate, D'Shinez-owned LUKS2 mount has been provisioned,
+# existing PGDATA has been safely copied offline, an isolated restore test passes,
+# and scripts/security/check-dshinez-encrypted-db-mount.sh succeeds on the host.
+#
+# Requires: DSHINEZ_ENCRYPTED_PGDATA_DIR=/home/sourav/dshinez-encrypted-postgres
+# Never pass this override on the current live stack before the gated migration.
+services:
+  db:
+    volumes:
+      - type: bind
+        source: ${DSHINEZ_ENCRYPTED_PGDATA_DIR:?set the D'Shinez-only encrypted PGDATA mount path}
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
