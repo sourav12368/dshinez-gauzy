@@ -9,7 +9,7 @@ import {
 	SocialSignInAuthData
 } from '@gauzy/auth';
 import { IAppIntegrationConfig } from '@gauzy/common';
-import { environment } from '@gauzy/config';
+import { DEFAULT_JWT_REFRESH_TOKEN_EXPIRATION_TIME, environment } from '@gauzy/config';
 import { DEMO_PASSWORD_LESS_MAGIC_CODE } from '@gauzy/constants';
 import {
 	IAuthResponse,
@@ -156,6 +156,7 @@ import {
 } from './oauth-app-scope';
 import {
 	IUserSessionClaims,
+	currentRequestSessionClaims,
 	keepSessionForRequest,
 	readSessionClaims,
 	sessionForMint,
@@ -4062,6 +4063,7 @@ export class AuthService extends SocialAuthService {
 		const reason = USER_SESSION_SIGNED_OUT_REASON;
 		const currentToken = RequestContext.currentToken();
 		const currentUserId = RequestContext.currentUserId();
+		const currentSession = currentRequestSessionClaims();
 
 		const revocations: Promise<unknown>[] = [
 			this.userService.removeRefreshToken().catch((error) => {
@@ -4069,6 +4071,23 @@ export class AuthService extends SocialAuthService {
 				Logger.error('Error while removing refresh token from user record:', error?.message);
 			})
 		];
+
+		// Also invalidate every access/refresh token of this sign-in, including a token minted by a concurrent refresh.
+		// Legacy requests without a session id retain the single-token behavior below.
+		if (currentUserId && currentSession) {
+			const accessTtl = Number(environment.JWT_TOKEN_EXPIRATION_TIME) || 86400;
+			const refreshTtl =
+				Number(environment.JWT_REFRESH_TOKEN_EXPIRATION_TIME) || DEFAULT_JWT_REFRESH_TOKEN_EXPIRATION_TIME;
+			const expiresAt = new Date(Date.now() + Math.max(accessTtl, refreshTtl) * 1000);
+			revocations.push(
+				this.accessTokenService.markSessionSignedOut(
+					currentUserId,
+					currentSession.sessionId,
+					expiresAt,
+					reason
+				)
+			);
+		}
 
 		if (refreshToken) {
 			revocations.push(
@@ -4088,6 +4107,10 @@ export class AuthService extends SocialAuthService {
 			);
 		}
 
-		await Promise.allSettled(revocations);
+		const results = await Promise.allSettled(revocations);
+		// Logout must not report success when a named session could still mint/use another access token.
+		if (results.some((result) => result.status === 'rejected')) {
+			throw new ServiceUnavailableException('Could not securely complete session logout; please try again.');
+		}
 	}
 }
