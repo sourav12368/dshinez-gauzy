@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { NbButtonModule, NbIconModule } from '@nebular/theme';
@@ -44,6 +45,24 @@ describe('SocialLinksComponent', () => {
 		environment.OIDC_AUTH_LINK = '';
 		create();
 		expect(component).toBeTruthy();
+	});
+
+	it('omits provider links and skips provider lookups on D’Shinez auth screens', () => {
+		const body = TestBed.inject(DOCUMENT).body;
+		const wasBranded = body.classList.contains('dshinez-app');
+		body.classList.add('dshinez-app');
+		try {
+			environment.OIDC_AUTH_LINK = '/api/auth/oidc';
+			const getConfigs = jest.spyOn(TestBed.inject(AppService), 'getAppConfigs');
+			fixture = TestBed.createComponent(SocialLinksComponent);
+			fixture.detectChanges();
+
+			expect(fixture.nativeElement.querySelector('a')).toBeNull();
+			expect(getConfigs).not.toHaveBeenCalled();
+			http.expectNone(() => true);
+		} finally {
+			body.classList.toggle('dshinez-app', wasBranded);
+		}
 	});
 
 	it('shows no sign-in plugin button and makes no request while no link is configured', () => {

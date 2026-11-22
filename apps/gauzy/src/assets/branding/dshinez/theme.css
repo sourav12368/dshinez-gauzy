@@ -101,8 +101,8 @@ body.dshinez-app ngx-login .login-wrapper {
 	border-block-start: 3px solid var(--dshinez-red);
 }
 
-body.dshinez-app ngx-login .login-wrapper > section:has(> ngx-social-links),
-body.dshinez-app ngx-login .login-wrapper > section:has(> ngx-social-links) + .hr-div-soft {
+body.dshinez-app :is(ngx-login, ngx-login-magic, ngx-register) section:has(> ngx-social-links),
+body.dshinez-app :is(ngx-login, ngx-login-magic, ngx-register) section:has(> ngx-social-links) + .hr-div-soft {
 	display: none;
 }
 
