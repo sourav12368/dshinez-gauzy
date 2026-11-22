@@ -21,6 +21,7 @@ export class NgxLoginComponent extends NbLoginComponent implements OnInit {
 	isShown = false;
 	RolesEnum = RolesEnum;
 	isDemo: boolean = environment.DEMO;
+	isDshinez = false;
 	demoEmployeePassword: string = environment.DEMO_EMPLOYEE_PASSWORD ?? '12345678';
 	showPassword = false;
 	passwordNoSpaceEdges = patterns.passwordNoSpaceEdges;
@@ -40,7 +41,8 @@ export class NgxLoginComponent extends NbLoginComponent implements OnInit {
 	ngOnInit() {
 		// -- to not block the scroll after logout
 		const body = this.el.nativeElement.closest('body');
-		body.removeAttribute('style');
+		this.isDshinez = body?.classList.contains('dshinez-app') ?? false;
+		body?.removeAttribute('style');
 		this.checkRememberdMe();
 		this.autoFillCredential();
 	}
