@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@gauzy/ui-config';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
@@ -87,6 +88,7 @@ export class SocialLinksComponent implements OnInit {
 	public socialLinks$: Observable<ISocialLink[]>; // Observable for an array of social links
 	public signInProviders$: Observable<ISignInProvider[]>; // Sign-in plugins that are configured and enabled
 	public configs: IAppConfig;
+	private readonly document = inject(DOCUMENT);
 	private readonly _appService = inject(AppService);
 	private readonly _http = inject(HttpClient);
 
@@ -95,6 +97,12 @@ export class SocialLinksComponent implements OnInit {
 	 * Called once after the first ngOnChanges().
 	 */
 	ngOnInit(): void {
+		if (this.document.body.classList.contains('dshinez-app')) {
+			this.socialLinks$ = of([]);
+			this.signInProviders$ = of([]);
+			return;
+		}
+
 		this.socialLinks$ = this._appService.getAppConfigs().pipe(
 			/**
 			 * Map the application configurations to social links.
