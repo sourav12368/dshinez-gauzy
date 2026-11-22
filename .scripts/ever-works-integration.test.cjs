@@ -128,6 +128,11 @@ const core = {
 	},
 	OrganizationProjectCreateCommand: class {},
 	createSsrfSafeHttpsAgent: () => undefined,
+	// The TypeORM fixture has no MikroORM instance. The platform executes the callback directly in this case.
+	runInMikroOrmContext: (orm, work) => {
+		assert.equal(orm, undefined);
+		return work();
+	},
 	RequestContext: {
 		currentTenantId: () => caller.tenantId,
 		currentUserId: () => caller.userId,
