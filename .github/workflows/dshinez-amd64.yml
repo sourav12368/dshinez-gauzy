@@ -25,7 +25,7 @@ jobs:
       DSHINEZ_IMAGE_PREFIX: ghcr.io/sourav12368/dshinez-gauzy
       DSHINEZ_IMAGE_TAG: amd64-${{ github.sha }}
       DSHINEZ_IMAGE_PLATFORM: linux/amd64
-      DSHINEZ_SOURCE_SHA: 504330da0623f6875aa7f86e8f360c3ef2b6ccb4
+      DSHINEZ_SOURCE_SHA: e28e230977e1c2e584309faa25abf038a7a2aef4
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -35,8 +35,7 @@ jobs:
         run: |
           git fetch --depth=1 --no-tags origin "$DSHINEZ_SOURCE_SHA"
           if ! git diff --quiet "$DSHINEZ_SOURCE_SHA" HEAD -- . \
-            ':(exclude).github/workflows/dshinez-amd64.yml' \
-            ':(exclude)tools/dshinez/smoke-arm64.sh'; then
+            ':(exclude).github/workflows/dshinez-amd64.yml'; then
             echo 'The application source differs from the reviewed snapshot.' >&2
             exit 1
           fi
