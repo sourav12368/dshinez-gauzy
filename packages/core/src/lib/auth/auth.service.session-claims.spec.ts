@@ -4,6 +4,7 @@ import { ServiceUnavailableException, UnauthorizedException } from '@nestjs/comm
 import { sign } from 'jsonwebtoken';
 import { RequestContext } from '../core/context';
 import { AuthService } from './auth.service';
+import { USER_SESSION_SIGNED_OUT_REASON } from './user-session/user-session-revocation';
 
 /**
  * Every token of one sign-in names the same session (ever-co/ever-gauzy#11921), so that a user can list where they are
@@ -42,9 +43,12 @@ function buildAuthService() {
 				accessPayloads.push(payload);
 				return `access-${accessPayloads.length}`;
 			}),
+			revoke: jest.fn(async () => undefined),
+			markSessionSignedOut: jest.fn(async () => undefined),
 			isSessionSignedOut: jest.fn(async (_userId: string, sessionId: string) => signedOut.has(sessionId))
 		},
 		refreshTokenService: {
+			revoke: jest.fn(async () => undefined),
 			generate: jest.fn(async (_userId: string, payload: Record<string, unknown>) => {
 				refreshPayloads.push(payload);
 				return `refresh-${refreshPayloads.length}`;
@@ -54,7 +58,10 @@ function buildAuthService() {
 				return `rotated-${refreshPayloads.length}`;
 			})
 		},
-		userService: { setCurrentRefreshToken: jest.fn(async () => undefined) },
+		userService: {
+			setCurrentRefreshToken: jest.fn(async () => undefined),
+			removeRefreshToken: jest.fn(async () => undefined)
+		},
 		resolveRefreshOrganizationId: jest.fn(async () => ORG)
 	});
 
@@ -84,6 +91,49 @@ function inRequest({
 }
 
 afterEach(() => jest.restoreAllMocks());
+
+describe('AuthService, employee logout revocation', () => {
+	it('marks the whole named session signed out and revokes the current access/refresh tokens', async () => {
+		const { service } = buildAuthService();
+		inRequest({
+			userId: USER,
+			claims: { sessionId: 'employee-browser', sessionStartedAt: '2026-11-14T09:00:00.000Z' }
+		});
+
+		await service.logout('refresh-token');
+
+		const access = (service as any).accessTokenService;
+		const refresh = (service as any).refreshTokenService;
+		expect(access.revoke).toHaveBeenCalledWith(expect.any(String), USER_SESSION_SIGNED_OUT_REASON, USER);
+		expect(refresh.revoke).toHaveBeenCalledWith('refresh-token', USER_SESSION_SIGNED_OUT_REASON, USER);
+		const [userId, sessionId, expiresAt, reason] = access.markSessionSignedOut.mock.calls[0];
+		expect([userId, sessionId, reason]).toEqual([USER, 'employee-browser', USER_SESSION_SIGNED_OUT_REASON]);
+		expect(expiresAt).toBeInstanceOf(Date);
+		expect(expiresAt.getTime()).toBeGreaterThan(Date.now());
+	});
+
+	it('preserves token-only behavior for a legacy access token without session claims', async () => {
+		const { service } = buildAuthService();
+		inRequest({ userId: USER, claims: {} });
+
+		await service.logout();
+
+		const access = (service as any).accessTokenService;
+		expect(access.markSessionSignedOut).not.toHaveBeenCalled();
+		expect(access.revoke).toHaveBeenCalledWith(expect.any(String), USER_SESSION_SIGNED_OUT_REASON, USER);
+	});
+
+	it('does not claim logout completion if the session marker cannot be stored', async () => {
+		const { service } = buildAuthService();
+		inRequest({
+			userId: USER,
+			claims: { sessionId: 'employee-browser', sessionStartedAt: '2026-11-14T09:00:00.000Z' }
+		});
+		(service as any).accessTokenService.markSessionSignedOut.mockRejectedValue(new Error('store unavailable'));
+
+		await expect(service.logout()).rejects.toThrow(ServiceUnavailableException);
+	});
+});
 
 describe('AuthService, the session a minted token names', () => {
 	it('gives the access and the refresh token of a sign-in the same new session', async () => {

@@ -1,12 +1,15 @@
+import { DOCUMENT } from '@angular/common';
 import { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { NbAuthModule } from '@nebular/auth';
 import { of } from 'rxjs';
 import { NoAuthGuard, RegistrationConfigService, registrationEnabledGuard } from '@gauzy/ui-core/core';
 import { NgxAuthModule } from './auth.module';
-import { createAuthRoutes } from './auth.routes';
+import { createAuthRoutes, dshinezEmployeeOnlyRegistrationGuard } from './auth.routes';
 import { NgxForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
 import { NgxLoginMagicComponent } from './components/login-magic/login-magic.component';
+import { NgxResetPasswordComponent } from './components/reset-password/reset-password.component';
 
 /**
  * #5784 / #7821: on a server whose operator closed public sign-ups, the sign-in pages show no Register link and the
@@ -29,14 +32,16 @@ describe('Auth pages — registration switch', () => {
 
 	it.each([
 		['the e-mail sign-in page', NgxLoginMagicComponent],
-		['the forgot-password page', NgxForgotPasswordComponent]
+		['the forgot-password page', NgxForgotPasswordComponent],
+		['the reset-password page', NgxResetPasswordComponent]
 	])('shows the Register link on %s while sign-ups are open', (_page, component) => {
 		expect(registerLink(render(component, true))).not.toBeNull();
 	});
 
 	it.each([
 		['the e-mail sign-in page', NgxLoginMagicComponent],
-		['the forgot-password page', NgxForgotPasswordComponent]
+		['the forgot-password page', NgxForgotPasswordComponent],
+		['the reset-password page', NgxResetPasswordComponent]
 	])('hides the Register link on %s while sign-ups are closed', (_page, component) => {
 		const page = render(component, false);
 
@@ -49,6 +54,36 @@ describe('Auth pages — registration switch', () => {
 		const [shell] = createAuthRoutes({ getPageLocationRoutes: () => [] } as never);
 		const register = shell.children?.find((route) => route.path === 'register');
 
-		expect(register?.canActivate).toEqual([NoAuthGuard, registrationEnabledGuard]);
+		expect(register?.canActivate).toEqual([
+			NoAuthGuard,
+			registrationEnabledGuard,
+			dshinezEmployeeOnlyRegistrationGuard
+		]);
+	});
+
+	it('redirects public registration to employee login on the D’Shinez-branded portal', () => {
+		const target = { toString: () => '/auth/login' };
+		const parseUrl = jest.fn().mockReturnValue(target);
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: DOCUMENT, useValue: { body: { classList: { contains: () => true } } } },
+				{ provide: Router, useValue: { parseUrl } }
+			]
+		});
+
+		expect(TestBed.runInInjectionContext(() => dshinezEmployeeOnlyRegistrationGuard({} as never, {} as never))).toBe(
+			target
+		);
+		expect(parseUrl).toHaveBeenCalledWith('/auth/login');
+	});
+
+	it('preserves public registration outside the D’Shinez portal', () => {
+		TestBed.configureTestingModule({
+			providers: [{ provide: DOCUMENT, useValue: { body: { classList: { contains: () => false } } } }]
+		});
+
+		expect(TestBed.runInInjectionContext(() => dshinezEmployeeOnlyRegistrationGuard({} as never, {} as never))).toBe(
+			true
+		);
 	});
 });
