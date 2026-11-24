@@ -107,12 +107,12 @@ body.dshinez-app :is(ngx-login, ngx-login-magic, ngx-register) section:has(> ngx
 }
 
 /* Keep the demo card available in demo mode. */
-body.dshinez-app ngx-login .login-container:has(ngx-whats-new) {
+body.dshinez-app ngx-login .login-container:not(:has(.features-wrapper)) {
 	width: min(100%, 440px);
 }
 
-body.dshinez-app ngx-login .features-wrapper:has(ngx-whats-new) {
-	display: none;
+body.dshinez-app ngx-login-magic .login-container {
+	width: min(100%, 476px);
 }
 
 /* These login styles override literals in the shared auth component. */
@@ -146,11 +146,3 @@ body.dshinez-app ngx-login .login-wrapper :is(.forgot-password-link, .login-magi
 	color: var(--dshinez-link) !important;
 }
 
-/* The D’Shinez workspace provides its own branding and staff support. */
-body.dshinez-app ngx-whats-new,
-body.dshinez-app .features-wrapper:has(ngx-whats-new),
-body.dshinez-app a[href^="mailto:forgot@gauzy.co"],
-body.dshinez-app a[href*="//docs.gauzy.co"],
-body.dshinez-app a[href="https://gauzy.co/"] {
-	display: none !important;
-}

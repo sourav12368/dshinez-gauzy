@@ -46,6 +46,10 @@ page=$("${request[@]}" "$base_url/")
 [[ $page == *assets/branding/dshinez/theme.css* ]]
 cmp apps/gauzy/src/assets/branding/dshinez/theme.css \
   <("${request[@]}" "$base_url/assets/branding/dshinez/theme.css")
+for asset in wordmark.png app-icon.png app-icon-large.png; do
+  cmp "apps/gauzy/src/assets/branding/dshinez/$asset" \
+    <("${request[@]}" "$base_url/assets/branding/dshinez/$asset")
+done
 
 login_body=$(jq -cn --arg email "$admin_email" --arg password "$admin_password" '{email:$email,password:$password}')
 token=$("${request[@]}" --json "$login_body" "$base_url/api/auth/login" | jq -er '.token | strings | select(length > 0)')
