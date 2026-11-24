@@ -228,8 +228,8 @@
 			</section>
 		</div>
 	</div>
+	@if (!electronService?.isElectron && isDemo) {
 	<div class="features-wrapper">
-		@if (!electronService?.isElectron && isDemo) {
 		<ng-container>
 			<div class="demo-credentials-buttons">
 				<nb-card class="features-card">
@@ -270,10 +270,6 @@
 				</nb-card>
 			</div>
 		</ng-container>
-		} @else {
-			<div>
-				<ngx-whats-new></ngx-whats-new>
-			</div>
-		}
 	</div>
+	}
 </section>

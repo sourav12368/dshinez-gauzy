@@ -65,9 +65,9 @@ body.dshinez-app:where(.nb-theme-dark, .nb-theme-gauzy-dark, .nb-theme-cosmic, .
 
 body.dshinez-app ngx-gauzy-logo .logo {
 	box-sizing: border-box;
-	width: 12rem;
+	width: 8rem;
 	max-width: 100%;
-	padding: 0.875rem;
+	padding: 0.375rem;
 	border-radius: 0.25rem;
 	background: #ffffff;
 }
@@ -78,7 +78,7 @@ body.dshinez-app ngx-gauzy-logo .logo > img {
 	height: auto !important;
 	max-width: 100%;
 	max-height: none;
-	aspect-ratio: auto 999 / 327;
+	aspect-ratio: auto 478 / 522;
 	object-fit: contain;
 }
 
@@ -107,12 +107,12 @@ body.dshinez-app :is(ngx-login, ngx-login-magic, ngx-register) section:has(> ngx
 }
 
 /* Keep the demo card available in demo mode. */
-body.dshinez-app ngx-login .login-container:has(ngx-whats-new) {
+body.dshinez-app ngx-login .login-container:not(:has(.features-wrapper)) {
 	width: min(100%, 440px);
 }
 
-body.dshinez-app ngx-login .features-wrapper:has(ngx-whats-new) {
-	display: none;
+body.dshinez-app ngx-login-magic .login-container {
+	width: min(100%, 476px);
 }
 
 /* These login styles override literals in the shared auth component. */
@@ -145,3 +145,4 @@ body.dshinez-app ngx-login .login-container .login-wrapper .options-row nb-check
 body.dshinez-app ngx-login .login-wrapper :is(.forgot-password-link, .login-magic-wrapper a) {
 	color: var(--dshinez-link) !important;
 }
+

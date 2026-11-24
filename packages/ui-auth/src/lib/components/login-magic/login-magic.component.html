@@ -131,9 +131,6 @@
 			}
 			<!-- Submit Button -->
 			<div class="submit-btn-wrapper">
-				<a class="forgot-email caption-2 forgot-email-big" href="mailto:forgot@gauzy.co">
-					{{ 'LOGIN_PAGE.FORGOT_EMAIL_TITLE' | translate }}
-				</a>
 				<div class="submit-inner-wrapper">
 					@if (isCodeSent) {
 						<button type="submit" nbButton size="tiny" class="submit-btn" [disabled]="form.invalid">
@@ -185,10 +182,5 @@
 				{{ 'BUTTONS.REGISTER' | translate }}
 			</a>
 		</section>
-	</div>
-	<div class="features-wrapper">
-		<div>
-			<ngx-whats-new></ngx-whats-new>
-		</div>
 	</div>
 </section>
