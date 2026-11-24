@@ -65,9 +65,9 @@ body.dshinez-app:where(.nb-theme-dark, .nb-theme-gauzy-dark, .nb-theme-cosmic, .
 
 body.dshinez-app ngx-gauzy-logo .logo {
 	box-sizing: border-box;
-	width: 12rem;
+	width: 8rem;
 	max-width: 100%;
-	padding: 0.875rem;
+	padding: 0.375rem;
 	border-radius: 0.25rem;
 	background: #ffffff;
 }
@@ -78,7 +78,7 @@ body.dshinez-app ngx-gauzy-logo .logo > img {
 	height: auto !important;
 	max-width: 100%;
 	max-height: none;
-	aspect-ratio: auto 999 / 327;
+	aspect-ratio: auto 478 / 522;
 	object-fit: contain;
 }
 
@@ -144,4 +144,13 @@ body.dshinez-app ngx-login .login-container .login-wrapper .options-row nb-check
 
 body.dshinez-app ngx-login .login-wrapper :is(.forgot-password-link, .login-magic-wrapper a) {
 	color: var(--dshinez-link) !important;
+}
+
+/* The D’Shinez workspace provides its own branding and staff support. */
+body.dshinez-app ngx-whats-new,
+body.dshinez-app .features-wrapper:has(ngx-whats-new),
+body.dshinez-app a[href^="mailto:forgot@gauzy.co"],
+body.dshinez-app a[href*="//docs.gauzy.co"],
+body.dshinez-app a[href="https://gauzy.co/"] {
+	display: none !important;
 }
