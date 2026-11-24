@@ -197,11 +197,6 @@
 					{{ 'BUTTONS.LOGIN' | translate }}
 				</button>
 			</div>
-			<div class="login-magic-wrapper">
-				<a routerLink="/auth/login-magic">
-					{{ 'LOGIN_PAGE.LOGIN_MAGIC.TITLE' | translate }}
-				</a>
-			</div>
 		</form>
 		<div class="hr-div-soft"></div>
 		<section>
@@ -209,21 +204,10 @@
 		</section>
 		<div class="hr-div-soft"></div>
 		<div class="another-actions">
-			<section class="another-action" aria-label="Sign In Workspace">
-				{{ 'WORKSPACES.UNKNOWN_WORKSPACE' | translate }}
-				<a class="text-link" routerLink="/auth/login-workspace">
-					{{ 'WORKSPACES.FIND_WORKSPACE' | translate }}
-				</a>
-			</section>
 			<section *gaRegistrationEnabled class="another-action" aria-label="Register">
 				{{ 'LOGIN_PAGE.DO_NOT_HAVE_ACCOUNT_TITLE' | translate }}
 				<a class="text-link" routerLink="/auth/register">
 					{{ 'BUTTONS.REGISTER' | translate }}
-				</a>
-			</section>
-			<section class="another-action" aria-label="Delete account">
-				<a class="text-link" routerLink="/auth/delete-account">
-					{{ 'DELETE_ACCOUNT_PAGE.LOGIN_LINK' | translate }}
 				</a>
 			</section>
 		</div>
