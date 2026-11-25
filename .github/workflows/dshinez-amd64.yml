@@ -25,7 +25,7 @@ jobs:
       DSHINEZ_IMAGE_PREFIX: ghcr.io/sourav12368/dshinez-gauzy
       DSHINEZ_IMAGE_TAG: amd64-${{ github.sha }}
       DSHINEZ_IMAGE_PLATFORM: linux/amd64
-      DSHINEZ_SOURCE_SHA: 113619a1c63544ae9cb9b677ab44231a503b58a7
+      DSHINEZ_SOURCE_SHA: 70d9fadb670725e4349836d4e9896508fd73a4bd
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
