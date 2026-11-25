@@ -473,12 +473,9 @@ export class TaskComponent extends PaginationFilterBaseComponent implements OnIn
 
 		this.loading = true;
 
-		const { tenantId, role } = this._store.user;
+		const { tenantId } = this._store.user;
 		const { id: organizationId } = this.organization;
-		const teamTaskEndpoint =
-			window.location.hostname === 'work.dshinez.com' && role?.name === RolesEnum.MANAGER
-				? 'managed-teams'
-				: 'team';
+		const teamTaskEndpoint = this.isManagedPortalBoard ? 'managed-teams' : 'team';
 
 		this.smartTableSource = new ServerDataSource(this.httpClient, {
 			...(this.viewComponentName === ComponentEnum.ALL_TASKS
@@ -810,6 +807,14 @@ export class TaskComponent extends PaginationFilterBaseComponent implements OnIn
 
 	isTeamTaskPage() {
 		return this.viewComponentName === ComponentEnum.TEAM_TASKS;
+	}
+
+	get isManagedPortalBoard(): boolean {
+		return (
+			this.isTeamTaskPage() &&
+			window.location.hostname === 'work.dshinez.com' &&
+			this._store.user?.role?.name === RolesEnum.MANAGER
+		);
 	}
 
 	/**
