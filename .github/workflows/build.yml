@@ -359,6 +359,9 @@ jobs:
         # unavailable. One step, so there is no `if:` on a previous step's outcome to get wrong.
         run: .github/scripts/restore-node-modules.sh
 
+      - name: Test employee assignment and manager team boundaries
+        run: node --experimental-vm-modules node_modules/jest/bin/jest.js -c packages/core/jest.config.ts --runInBand --runTestsByPath packages/core/src/lib/tasks/task.service.find-team-tasks.spec.ts
+
       - name: Test PostgreSQL migrations
         # cspell:words PGHOST PGPORT PGDATABASE
         env:
@@ -490,9 +493,6 @@ jobs:
           TASK_VIEWS_TEST_POSTGRES_URL: postgres://migration_test:migration_test@127.0.0.1:${{ job.services.postgres.ports[5432] }}/migration_test
           TASK_VIEWS_TEST_MYSQL_URL: mysql://migration_test:migration_test@127.0.0.1:${{ job.services.mysql.ports[3306] }}/migration_test
         run: node --experimental-vm-modules node_modules/jest/bin/jest.js -c packages/core/jest.config.ts --runInBand packages/core/src/lib/tasks/views/view-tasks.due-day.db.spec.ts packages/core/src/lib/tasks/task.service.built-in-views.db.spec.ts packages/core/src/lib/tasks/task.service.advanced-due-date.db.spec.ts packages/core/src/lib/tasks/task.service.date-filters.db.spec.ts
-
-      - name: Test employee assignment and manager team boundaries
-        run: node --experimental-vm-modules node_modules/jest/bin/jest.js -c packages/core/jest.config.ts --runInBand --runTestsByPath packages/core/src/lib/tasks/task.service.find-team-tasks.spec.ts
 
       - name: Test the Ever Platform connection against the mock
         # The plugin against the mock platform of the SDK's dev tools (`@ever-co/connect-tools`, the

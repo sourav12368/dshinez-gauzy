@@ -130,7 +130,7 @@ describe('TaskService.findTeamTasks (MikroORM) — employee scoping', () => {
 		jest.spyOn(RequestContext, 'currentRoleName').mockReturnValue(RolesEnum.MANAGER);
 		jest.spyOn(RequestContext, 'currentOrganizationId').mockReturnValue(employee.organizationId);
 		findManagedTeamIds.mockResolvedValue(['managed-team', 'other-managed-team']);
-		const paginate = jest.spyOn(CrudService.prototype, 'paginate').mockResolvedValue({ items: [], total: 0 });
+		const paginate = jest.spyOn(TenantAwareCrudService.prototype, 'paginate').mockResolvedValue({ items: [], total: 0 });
 
 		await service.findManagedTeamTasks({ where: { teams: ['managed-team', 'unmanaged-team'] } } as never);
 
