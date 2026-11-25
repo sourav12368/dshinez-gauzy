@@ -51,12 +51,12 @@ while IFS='|' read -r path hook; do
 	fi
 done <<'HOOKS'
 apps/gauzy/src/index.html|class="dshinez-app"
-apps/gauzy/src/index.html|<title>D’Shinez Holdings</title>
+apps/gauzy/src/index.html|<title>D’Shinez OS</title>
 apps/gauzy/src/index.html|assets/branding/dshinez/theme.css
 apps/gauzy/src/index.html|assets/branding/dshinez/app-icon.png
-apps/gauzy/src/app/app.module.ts|PLATFORM_BRAND_NAME: 'D’Shinez Holdings'
+apps/gauzy/src/app/app.module.ts|PLATFORM_BRAND_NAME: 'D’Shinez OS'
 apps/gauzy/src/app/app.module.ts|PLATFORM_LOGO: 'assets/branding/dshinez/wordmark.png'
-apps/gauzy/src/manifest.json|"name": "D’Shinez Holdings"
+apps/gauzy/src/manifest.json|"name": "D’Shinez OS"
 packages/ui-core/theme/src/lib/components/gauzy-logo/gauzy-logo.component.html|[src]="logoUrl
 packages/ui-core/theme/src/lib/layouts/one-column/one-column.layout.html|class="platform-brand"
 HOOKS

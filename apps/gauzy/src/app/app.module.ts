@@ -146,7 +146,7 @@ const FEATURE_MODULES = [
 			provide: GAUZY_ENV,
 			useValue: {
 				...environment,
-				PLATFORM_BRAND_NAME: 'D’Shinez Holdings',
+				PLATFORM_BRAND_NAME: 'D’Shinez OS',
 				PLATFORM_LOGO: 'assets/branding/dshinez/wordmark.png'
 			}
 		},
