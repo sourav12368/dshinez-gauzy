@@ -246,6 +246,14 @@ export class ManagedEmployeeService {
 		return memberships.some(isTeamManagerMembership);
 	}
 
+	async findManagedTeamIds(employeeId: ID, tenantId: ID, organizationId: ID): Promise<ID[]> {
+		const memberships = await this.typeOrmTeamEmployeeRepository.find({
+			where: { employeeId, tenantId, organizationTeam: { organizationId, tenantId } },
+			relations: { role: true }
+		});
+		return memberships.filter(isTeamManagerMembership).map(({ organizationTeamId }) => organizationTeamId);
+	}
+
 	/**
 	 * Checks if an employee is an active member of a team, whether or not they manage it.
 	 *

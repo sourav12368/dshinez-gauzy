@@ -10,6 +10,7 @@ services:
       DB_HOST: db
       APP_USER_REGISTRATION: 'false'
       ALLOW_TENANTS_REGISTRATION: 'false'
+      DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true'
 
     env_file:
       - .env.compose

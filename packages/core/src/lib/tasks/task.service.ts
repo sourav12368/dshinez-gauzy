@@ -734,10 +734,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @returns A Promise that resolves to the task entity.
 	 */
 	async findById(id: ID, params: GetTaskByIdDTO): Promise<ITask> {
-		const task = await this.findOneByIdString(id, params);
+		const assignment = this.employeePortalTaskScope();
+		const task = await this.findOneByIdString(id, assignment ? { ...params, where: assignment } : params);
 
 		// Include the root epic if requested
-		if (params.includeRootEpic && task) {
+		if (params.includeRootEpic && task && !assignment) {
 			task.rootEpic = await this.findParentUntilEpic(task.id);
 		}
 
@@ -757,6 +758,21 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		return task;
 	}
 
+	private employeePortalTaskScope(): { tenantId: ID; organizationId: ID; members: { id: ID } } | undefined {
+		if (process.env.DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY !== 'true' || !RequestContext.hasRole(RolesEnum.EMPLOYEE)) {
+			return undefined;
+		}
+
+		const employeeId = RequestContext.currentUser()?.employeeId;
+		const tenantId = RequestContext.currentTenantId();
+		const organizationId = RequestContext.currentOrganizationId();
+		if (!employeeId || !tenantId || !organizationId) {
+			throw new NotFoundException('The requested record was not found');
+		}
+
+		return { tenantId, organizationId, members: { id: employeeId } };
+	}
+
 	/**
 	 * Retrieves a paginated list of tasks, with optional advanced filters applied.
 	 *
@@ -773,7 +789,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 				advancedFilters = this.buildAdvancedWhereCondition(filters, options.where);
 			}
 
-			return super.findAll({ ...options, where: { ...advancedFilters, ...options.where } });
+			return super.findAll({ ...options, where: { ...advancedFilters, ...options.where, ...this.employeePortalTaskScope() } });
 		} catch (error) {
 			console.log(error);
 			throw new BadRequestException(error);
@@ -1427,7 +1443,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @returns
 	 */
 	async getMyTasks(options: BaseQueryDTO<Task>) {
-		return await this.getEmployeeTasks(options);
+		const employeeId = RequestContext.currentUser()?.employeeId;
+		if (!employeeId) {
+			return { items: [], total: 0 };
+		}
+		return this.getEmployeeTasks(options, employeeId);
 	}
 
 	/**
@@ -1475,10 +1495,18 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @param filters - Optional filters for advanced task filtering.
 	 * @returns
 	 */
-	async getEmployeeTasks(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering) {
+	async getEmployeeTasks(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering, assignedEmployeeId?: ID) {
 		// Builds its own query, so the check in the CRUD read methods never runs: assert the
 		// sensitive-relation table on the client-supplied relations before anything is loaded.
 		this.assertRelationsPermitted(options);
+		const portalScope = this.employeePortalTaskScope();
+		if (portalScope) {
+			assignedEmployeeId = portalScope.members.id;
+			options = {
+				...options,
+				where: { ...options.where, organizationId: portalScope.organizationId }
+			};
+		}
 
 		try {
 			switch (this.ormType) {
@@ -1508,9 +1536,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 						Object.assign(mikroWhere, this.mikroOrmColumnFilters(filters, mikroWhere));
 					}
 
-					const employeeId = await this.resolveMemberFilter(where);
+					const employeeId = assignedEmployeeId ?? (await this.resolveMemberFilter(where));
 
-					if (isNotEmpty(employeeId)) {
+					if (assignedEmployeeId) {
+						mikroWhere.members = { id: assignedEmployeeId };
+					} else if (isNotEmpty(employeeId)) {
 						mikroWhere.$or = [{ members: { id: employeeId } }, { teams: { members: { employeeId } } }];
 					}
 
@@ -1537,7 +1567,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 						organizationSprintId = null
 					} = where;
 					const { organizationId, projectId } = where;
-					const employeeId = await this.resolveMemberFilter(where);
+					const employeeId = assignedEmployeeId ?? (await this.resolveMemberFilter(where));
 
 					const query = this.typeOrmRepository.createQueryBuilder(this.tableName);
 					query.innerJoin(`${query.alias}.members`, 'members');
@@ -1633,6 +1663,13 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @returns
 	 */
 	async getAllTasksByEmployee(employeeId: IEmployee['id'], options: BaseQueryDTO<Task> & IAdvancedTaskFiltering) {
+		if (this.employeePortalTaskScope()) {
+			if (employeeId !== RequestContext.currentUser()?.employeeId) {
+				return [];
+			}
+			return (await this.getMyTasks(options)).items;
+		}
+
 		// Builds its own query, so the check in the CRUD read methods never runs: assert the
 		// sensitive-relation table on the client-supplied relations before anything is loaded.
 		this.assertRelationsPermitted(options);
@@ -1981,7 +2018,31 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @param filters - Optional filters for advanced task filtering.
 	 * @returns A Promise that resolves to a paginated list of tasks.
 	 */
-	public async pagination(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering): Promise<IPagination<ITask>> {
+	async findManagedTeamTasks(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering): Promise<IPagination<ITask>> {
+		if (
+			process.env.DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY !== 'true' ||
+			RequestContext.currentRoleName() !== RolesEnum.MANAGER ||
+			RequestContext.currentOAuthAppScopes() !== null
+		) {
+			throw new ForbiddenException('This task list is available to portal managers.');
+		}
+
+		const employeeId = RequestContext.currentUser()?.employeeId;
+		const tenantId = RequestContext.currentTenantId();
+		const organizationId = RequestContext.currentOrganizationId();
+		if (!employeeId || !tenantId || !organizationId) {
+			return { items: [], total: 0 };
+		}
+
+		const teams = await this._managedEmployeeService.findManagedTeamIds(employeeId, tenantId, organizationId);
+		if (!teams.length) {
+			return { items: [], total: 0 };
+		}
+
+		return this.pagination({ ...options, where: { ...options.where, tenantId, organizationId } }, teams);
+	}
+
+	public async pagination(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering, managedTeamIds?: ID[]): Promise<IPagination<ITask>> {
 		const filters = options?.filters;
 		const where = options?.where;
 
@@ -2017,9 +2078,12 @@ export class TaskService extends TenantAwareCrudService<Task> {
 
 			// Apply filters for teams, ensuring it uses In for array comparison
 			if (where.teams) {
+				const requestedTeamIds = where.teams as ID[];
 				options.where.teams = {
-					id: In(where.teams as ID[])
+					id: In(managedTeamIds ? managedTeamIds.filter((id) => requestedTeamIds.includes(id)) : requestedTeamIds)
 				};
+			} else if (managedTeamIds) {
+				options.where.teams = { id: In(managedTeamIds) };
 			}
 
 			// Apply filter for isScreeningTask
@@ -2033,7 +2097,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		}
 
 		// Call the base paginate method
-		return await super.paginate({ ...options, where: { ...advancedFilters, ...where } });
+		return await super.paginate({ ...options, where: { ...advancedFilters, ...where, ...this.employeePortalTaskScope() } });
 	}
 
 	/**
@@ -2382,7 +2446,8 @@ export class TaskService extends TenantAwareCrudService<Task> {
 			organizationId,
 			prefix,
 			number,
-			...(isNotEmpty(projectId) ? { projectId } : {})
+			...(isNotEmpty(projectId) ? { projectId } : {}),
+			...this.employeePortalTaskScope()
 		} as FindOptionsWhere<Task>;
 
 		// Two rows are enough to tell "one" from "more than one"; reading the rest would only cost.

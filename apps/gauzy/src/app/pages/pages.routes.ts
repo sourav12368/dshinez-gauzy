@@ -1,6 +1,8 @@
-import { Route, Routes } from '@angular/router';
-import { PermissionsEnum } from '@gauzy/contracts';
-import { PageRouteRegistryService, PermissionsGuard, UserResolver } from '@gauzy/ui-core/core';
+import { DOCUMENT } from '@angular/common';
+import { inject } from '@angular/core';
+import { Route, Router, Routes } from '@angular/router';
+import { PermissionsEnum, RolesEnum } from '@gauzy/contracts';
+import { PageRouteRegistryService, PermissionsGuard, UserResolver, UsersService } from '@gauzy/ui-core/core';
 import { DateRangePickerResolver, NotFoundComponent } from '@gauzy/ui-core/shared';
 import { PagesComponent } from './pages.component';
 import { featureDocumentsRedirectGuard } from './feature-documents-redirect.guard';
@@ -60,9 +62,43 @@ export const getPagesRoutes = (_pageRouteRegistryService: PageRouteRegistryServi
 	];
 };
 
-/** Redirects empty /pages to /pages/dashboard */
 function getRedirectRoute(): Route[] {
-	return [{ path: '', redirectTo: 'dashboard', pathMatch: 'full' }];
+	return [
+		{
+			path: '',
+			pathMatch: 'full',
+			component: PagesComponent,
+			canActivate: [
+				async () => {
+					const document = inject(DOCUMENT);
+					const router = inject(Router);
+					const users = inject(UsersService);
+					const dashboard = router.createUrlTree(['/pages/dashboard']);
+
+					if (document.location?.hostname !== 'work.dshinez.com') {
+						return dashboard;
+					}
+
+					const user = await users.getMe(['role']).catch(() => null);
+					if (!user?.tenantId) {
+						return dashboard;
+					}
+
+					switch (user.role?.name) {
+						case RolesEnum.EMPLOYEE:
+							return router.createUrlTree(['/pages/tasks/me']);
+						case RolesEnum.MANAGER:
+							return router.createUrlTree(['/pages/tasks/team']);
+						case RolesEnum.ADMIN:
+						case RolesEnum.SUPER_ADMIN:
+							return router.createUrlTree(['/pages/tasks/dashboard']);
+						default:
+							return dashboard;
+					}
+				}
+			]
+		}
+	];
 }
 
 function getDashboardRoute(): Route[] {

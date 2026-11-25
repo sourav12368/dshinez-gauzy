@@ -20,6 +20,7 @@ x-gauzy-environment: &gauzy-environment
   DEMO: 'false'
   APP_USER_REGISTRATION: 'false'
   ALLOW_TENANTS_REGISTRATION: 'false'
+  DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true'
   API_BASE_URL: ${GAUZY_PUBLIC_URL:-https://${GAUZY_DOMAIN:-localhost}}
   CLIENT_BASE_URL: ${GAUZY_PUBLIC_URL:-https://${GAUZY_DOMAIN:-localhost}}
   ALLOWED_ORIGINS: ${GAUZY_PUBLIC_URL:-https://${GAUZY_DOMAIN:-localhost}}

@@ -46,6 +46,7 @@ import {
 	ISelectedEmployee,
 	ITask,
 	PermissionsEnum,
+	RolesEnum,
 	TaskListTypeEnum,
 	IFavorite,
 	BaseEntityEnum
@@ -472,14 +473,20 @@ export class TaskComponent extends PaginationFilterBaseComponent implements OnIn
 
 		this.loading = true;
 
-		const { tenantId } = this._store.user;
+		const { tenantId, role } = this._store.user;
 		const { id: organizationId } = this.organization;
+		const teamTaskEndpoint =
+			window.location.hostname === 'work.dshinez.com' && role?.name === RolesEnum.MANAGER
+				? 'managed-teams'
+				: 'team';
 
 		this.smartTableSource = new ServerDataSource(this.httpClient, {
 			...(this.viewComponentName === ComponentEnum.ALL_TASKS
 				? { endPoint: `${API_PREFIX}/tasks/pagination` }
 				: {}),
-			...(this.viewComponentName === ComponentEnum.TEAM_TASKS ? { endPoint: `${API_PREFIX}/tasks/team` } : {}),
+			...(this.viewComponentName === ComponentEnum.TEAM_TASKS
+				? { endPoint: `${API_PREFIX}/tasks/${teamTaskEndpoint}` }
+				: {}),
 			...(this.viewComponentName === ComponentEnum.MY_TASKS ? { endPoint: `${API_PREFIX}/tasks/me` } : {}),
 			relations: [
 				'members',
