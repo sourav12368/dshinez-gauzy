@@ -95,7 +95,7 @@ describe('TaskService.findTeamTasks (MikroORM) — employee scoping', () => {
 		jest.spyOn(RequestContext, 'currentOrganizationId').mockReturnValue(employee.organizationId);
 		const findTask = jest.spyOn(service, 'findOneByIdString').mockRejectedValue(new Error('task not found'));
 
-		await expect(service.findById('task', {})).rejects.toThrow('task not found');
+		await expect(service.findById('task', { where: {} })).rejects.toThrow('task not found');
 		expect(findTask).toHaveBeenCalledWith('task', {
 			where: {
 				tenantId: employee.tenantId,
