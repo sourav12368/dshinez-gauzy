@@ -135,6 +135,7 @@ describe('AuthService, employee logout revocation', () => {
 	});
 });
 
+describe('AuthService, failed logout revocation', () => {
 	it('fails closed when removing the refresh token from the user record fails', async () => {
 		const { service } = buildAuthService();
 		inRequest({ userId: USER, claims: { sessionId: 'employee-browser', sessionStartedAt: '2026-11-14T09:00:00.000Z' } });
@@ -158,6 +159,8 @@ describe('AuthService, employee logout revocation', () => {
 
 		await expect(service.logout()).rejects.toThrow(ServiceUnavailableException);
 	});
+
+});
 
 describe('AuthService, the session a minted token names', () => {
 	it('gives the access and the refresh token of a sign-in the same new session', async () => {
