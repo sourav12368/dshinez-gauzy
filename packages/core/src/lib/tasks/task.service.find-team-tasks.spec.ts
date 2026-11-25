@@ -64,6 +64,7 @@ describe('TaskService.findTeamTasks (MikroORM) — employee scoping', () => {
 
 	it('limits My Tasks to direct assignments even when the caller can select another employee', async () => {
 		({ restore } = asTenantUser(employee, { permissions: [PermissionsEnum.CHANGE_SELECTED_EMPLOYEE] }));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
 
 		await service.getMyTasks({
 			where: { organizationId: employee.organizationId, members: { id: 'someone-else' } }
@@ -75,6 +76,7 @@ describe('TaskService.findTeamTasks (MikroORM) — employee scoping', () => {
 
 	it('returns no My Tasks for a user without an employee record', async () => {
 		({ restore } = asTenantUser(noEmployee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
 
 		await expect(service.getMyTasks({ where: { organizationId: employee.organizationId } })).resolves.toEqual({
 			items: [],

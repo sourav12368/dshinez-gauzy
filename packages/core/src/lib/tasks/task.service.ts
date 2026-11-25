@@ -1443,6 +1443,10 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @returns
 	 */
 	async getMyTasks(options: BaseQueryDTO<Task>) {
+		if (process.env.DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY !== 'true') {
+			return this.getEmployeeTasks(options);
+		}
+
 		const employeeId = RequestContext.currentUser()?.employeeId;
 		if (!employeeId) {
 			return { items: [], total: 0 };
