@@ -9,7 +9,7 @@ import {
 	SocialSignInAuthData
 } from '@gauzy/auth';
 import { IAppIntegrationConfig } from '@gauzy/common';
-import { environment } from '@gauzy/config';
+import { DEFAULT_JWT_REFRESH_TOKEN_EXPIRATION_TIME, environment } from '@gauzy/config';
 import { DEMO_PASSWORD_LESS_MAGIC_CODE } from '@gauzy/constants';
 import {
 	IAuthResponse,
@@ -68,6 +68,7 @@ import { DataSource, DeepPartial, EntityManager, In, IsNull, MoreThanOrEqual, No
 import { pick } from 'underscore';
 import { AccessTokenService } from '../access-token/access-token.service';
 import { accessTokenCarriesPermissions } from './access-token-claims';
+import { USER_SESSION_SIGNED_OUT_REASON } from './user-session/user-session-revocation';
 import { IAccessTokenMetadata } from '../access-token/type.token';
 import { EmployeeService } from '../employee/employee.service';
 import { TypeOrmEmployeeRepository } from '../employee/repository/type-orm-employee.repository';
@@ -155,6 +156,7 @@ import {
 } from './oauth-app-scope';
 import {
 	IUserSessionClaims,
+	currentRequestSessionClaims,
 	keepSessionForRequest,
 	readSessionClaims,
 	sessionForMint,
@@ -4057,35 +4059,57 @@ export class AuthService extends SocialAuthService {
 	 * @param refreshToken The refresh token to be revoked. This is optional as the function will attempt to revoke the current access token regardless.
 	 */
 	public async logout(refreshToken?: string): Promise<void> {
-		const reason = 'User initiated logout';
+		const reason = USER_SESSION_SIGNED_OUT_REASON;
 		const currentToken = RequestContext.currentToken();
 		const currentUserId = RequestContext.currentUserId();
+		const currentSession = currentRequestSessionClaims();
 
-		const revocations: Promise<unknown>[] = [
-			this.userService.removeRefreshToken().catch((error) => {
-				// Log the error but do not throw it, as we want to proceed with logout even if this fails
-				Logger.error('Error while removing refresh token from user record:', error?.message);
-			})
+		const revocations: Array<{ operation: string; promise: Promise<unknown> }> = [
+			{ operation: 'remove refresh token from user record', promise: this.userService.removeRefreshToken() }
 		];
 
+		// Invalidate every token minted by this sign-in, including one minted by a concurrent refresh.
+		// Legacy requests without session claims retain single-token revocation.
+		if (currentUserId && currentSession) {
+			const accessTtl = Number(environment.JWT_TOKEN_EXPIRATION_TIME) || 86400;
+			const refreshTtl =
+				Number(environment.JWT_REFRESH_TOKEN_EXPIRATION_TIME) || DEFAULT_JWT_REFRESH_TOKEN_EXPIRATION_TIME;
+			const expiresAt = new Date(Date.now() + Math.max(accessTtl, refreshTtl) * 1000);
+			revocations.push({
+				operation: 'mark sign-in session as signed out',
+				promise: this.accessTokenService.markSessionSignedOut(
+					currentUserId,
+					currentSession.sessionId,
+					expiresAt,
+					reason
+				)
+			});
+		}
+
 		if (refreshToken) {
-			revocations.push(
-				this.refreshTokenService.revoke(refreshToken, reason, currentUserId).catch((error) => {
-					// Log the error but do not throw it, as we want to proceed with logout even if this fails
-					Logger.error('Error while revoking refresh token:', error?.message);
-				})
-			);
+			revocations.push({
+				operation: 'revoke refresh token',
+				promise: this.refreshTokenService.revoke(refreshToken, reason, currentUserId)
+			});
 		}
 
 		if (currentToken) {
-			revocations.push(
-				this.accessTokenService.revoke(currentToken, reason, currentUserId).catch((error) => {
-					// Log the error but do not throw it, as we want to proceed with logout even if this fails
-					Logger.error('Error while revoking access token:', error?.message);
-				})
-			);
+			revocations.push({
+				operation: 'revoke access token',
+				promise: this.accessTokenService.revoke(currentToken, reason, currentUserId)
+			});
 		}
 
-		await Promise.allSettled(revocations);
+		const results = await Promise.allSettled(revocations.map(({ promise }) => promise));
+		for (let index = 0; index < results.length; index++) {
+			const result = results[index];
+			if (result.status === 'rejected') {
+				const detail = result.reason instanceof Error ? result.reason.message : String(result.reason);
+				Logger.error('Error while ' + revocations[index].operation + ': ' + detail);
+			}
+		}
+		if (results.some((result) => result.status === 'rejected')) {
+			throw new ServiceUnavailableException('Could not securely complete session logout; please try again.');
+		}
 	}
 }
