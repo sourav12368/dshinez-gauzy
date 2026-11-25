@@ -285,6 +285,10 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 */
 	async update(id: ID, input: Partial<ITaskUpdateInput>): Promise<ITask> {
 		try {
+			const portalScope = this.employeePortalTaskScope();
+			if (portalScope && 'organizationId' in input && input.organizationId !== portalScope.organizationId) {
+				throw new ForbiddenException('Employees cannot move tasks outside their organization.');
+			}
 			// Sanitize the rich-text description HTML before it reaches the persistence path below.
 			if (typeof input.description === 'string') {
 				input.description = sanitizeRichHtml(input.description);
@@ -311,7 +315,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 				dailyPlans: true
 			};
 
-			const task = await this.findOneByIdString(id, { relations });
+			const task = await this.findOneByIdString(id, { relations, ...(portalScope && { where: portalScope }) });
 
 			// The status, priority and size records the update moves the task to, judged and named as a bulk update's
 			// are: refused before anything is written when the task's organization may not take one. A bulk update has
@@ -325,9 +329,19 @@ export class TaskService extends TenantAwareCrudService<Task> {
 			// Separate members into removed and new members. Only an update that carries `members` changes
 			// them: without it (the estimate recalculated after an estimation changes, a module or screening
 			// update, a partial PUT) every assignee used to count as removed and lost their ASSIGNMENT subscription.
-			const membersChanged = Array.isArray(data.members);
+			const membersChanged = Array.isArray(data.members) && !portalScope;
 			const memberIdSet = new Set((data.members || []).map(({ id }) => id));
 			const existingMemberIdSet = new Set((taskMembers || []).map(({ id }) => id));
+			if (
+				portalScope &&
+				Array.isArray(data.members) &&
+				(memberIdSet.size !== existingMemberIdSet.size || [...memberIdSet].some((id) => !existingMemberIdSet.has(id)))
+			) {
+				throw new ForbiddenException('Employees cannot change task assignments.');
+			}
+			if (portalScope) {
+				delete data.members;
+			}
 
 			const removedMembers = membersChanged
 				? (taskMembers || []).filter((member) => !memberIdSet.has(member.id))
@@ -419,6 +433,10 @@ export class TaskService extends TenantAwareCrudService<Task> {
 				const saved: Partial<Task> = { ...(moved ?? {}) };
 				if (removesProject) {
 					saved.project = null;
+				}
+
+				if (portalScope) {
+					await service.findOneByIdString(id, { where: portalScope });
 				}
 
 				// The reference is written before the save. In the transaction the order does not matter. Without one
@@ -734,10 +752,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @returns A Promise that resolves to the task entity.
 	 */
 	async findById(id: ID, params: GetTaskByIdDTO): Promise<ITask> {
-		const task = await this.findOneByIdString(id, params);
+		const assignment = this.employeePortalTaskScope();
+		const task = await this.findOneByIdString(id, assignment ? { ...params, where: assignment } : params);
 
 		// Include the root epic if requested
-		if (params.includeRootEpic && task) {
+		if (params.includeRootEpic && task && !assignment) {
 			task.rootEpic = await this.findParentUntilEpic(task.id);
 		}
 
@@ -757,6 +776,26 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		return task;
 	}
 
+	private employeePortalTaskScope(): { tenantId: ID; organizationId: ID; members: { id: ID } } | undefined {
+		if (process.env.DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY !== 'true' || !RequestContext.hasRole(RolesEnum.EMPLOYEE)) {
+			return undefined;
+		}
+
+		const employeeId = RequestContext.currentUser()?.employeeId;
+		const tenantId = RequestContext.currentTenantId();
+		const organizationId = RequestContext.currentOrganizationId();
+		if (!employeeId || !tenantId || !organizationId) {
+			throw new NotFoundException('The requested record was not found');
+		}
+
+		return { tenantId, organizationId, members: { id: employeeId } };
+	}
+
+	override countBy(options?: FindOptionsWhere<Task>): Promise<number> {
+		const portalScope = this.employeePortalTaskScope();
+		return super.countBy(portalScope ? { ...options, ...portalScope } : options);
+	}
+
 	/**
 	 * Retrieves a paginated list of tasks, with optional advanced filters applied.
 	 *
@@ -773,7 +812,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 				advancedFilters = this.buildAdvancedWhereCondition(filters, options.where);
 			}
 
-			return super.findAll({ ...options, where: { ...advancedFilters, ...options.where } });
+			return super.findAll({ ...options, where: { ...advancedFilters, ...options.where, ...this.employeePortalTaskScope() } });
 		} catch (error) {
 			console.log(error);
 			throw new BadRequestException(error);
@@ -1427,7 +1466,15 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @returns
 	 */
 	async getMyTasks(options: BaseQueryDTO<Task>) {
-		return await this.getEmployeeTasks(options);
+		if (process.env.DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY !== 'true') {
+			return this.getEmployeeTasks(options);
+		}
+
+		const employeeId = RequestContext.currentUser()?.employeeId;
+		if (!employeeId) {
+			return { items: [], total: 0 };
+		}
+		return this.getEmployeeTasks(options, employeeId);
 	}
 
 	/**
@@ -1475,10 +1522,18 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @param filters - Optional filters for advanced task filtering.
 	 * @returns
 	 */
-	async getEmployeeTasks(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering) {
+	async getEmployeeTasks(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering, assignedEmployeeId?: ID) {
 		// Builds its own query, so the check in the CRUD read methods never runs: assert the
 		// sensitive-relation table on the client-supplied relations before anything is loaded.
 		this.assertRelationsPermitted(options);
+		const portalScope = this.employeePortalTaskScope();
+		if (portalScope) {
+			assignedEmployeeId = portalScope.members.id;
+			options = {
+				...options,
+				where: { ...options.where, organizationId: portalScope.organizationId }
+			};
+		}
 
 		try {
 			switch (this.ormType) {
@@ -1508,9 +1563,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 						Object.assign(mikroWhere, this.mikroOrmColumnFilters(filters, mikroWhere));
 					}
 
-					const employeeId = await this.resolveMemberFilter(where);
+					const employeeId = assignedEmployeeId ?? (await this.resolveMemberFilter(where));
 
-					if (isNotEmpty(employeeId)) {
+					if (assignedEmployeeId) {
+						mikroWhere.members = { id: assignedEmployeeId };
+					} else if (isNotEmpty(employeeId)) {
 						mikroWhere.$or = [{ members: { id: employeeId } }, { teams: { members: { employeeId } } }];
 					}
 
@@ -1537,7 +1594,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 						organizationSprintId = null
 					} = where;
 					const { organizationId, projectId } = where;
-					const employeeId = await this.resolveMemberFilter(where);
+					const employeeId = assignedEmployeeId ?? (await this.resolveMemberFilter(where));
 
 					const query = this.typeOrmRepository.createQueryBuilder(this.tableName);
 					query.innerJoin(`${query.alias}.members`, 'members');
@@ -1633,6 +1690,13 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @returns
 	 */
 	async getAllTasksByEmployee(employeeId: IEmployee['id'], options: BaseQueryDTO<Task> & IAdvancedTaskFiltering) {
+		if (this.employeePortalTaskScope()) {
+			if (employeeId !== RequestContext.currentUser()?.employeeId) {
+				return [];
+			}
+			return (await this.getMyTasks(options)).items;
+		}
+
 		// Builds its own query, so the check in the CRUD read methods never runs: assert the
 		// sensitive-relation table on the client-supplied relations before anything is loaded.
 		this.assertRelationsPermitted(options);
@@ -1748,6 +1812,10 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		// sensitive-relation table on the client-supplied relations before anything is loaded.
 		this.assertRelationsPermitted(options);
 		assertCallerColumnsAllowed(this.typeOrmRepository?.metadata, options);
+		const portalScope = this.employeePortalTaskScope();
+		if (portalScope) {
+			options = { ...options, where: { ...options.where, ...portalScope } };
+		}
 
 		try {
 			switch (this.ormType) {
@@ -1818,6 +1886,9 @@ export class TaskService extends TenantAwareCrudService<Task> {
 						mikroWhere.$or = [{ teams: mikroWhere.teams }, { projectId }];
 						delete mikroWhere.teams;
 					}
+					if (portalScope) {
+						Object.assign(mikroWhere, portalScope);
+					}
 
 					const [items, total] = await this.mikroOrmRepository.findAndCount(mikroWhere, {
 						...(options.relations ? { populate: Object.keys(options.relations) as any[] } : {}),
@@ -1858,6 +1929,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 
 					const query = this.typeOrmRepository.createQueryBuilder(this.tableName);
 					query.leftJoin(`${query.alias}.teams`, 'teams');
+					if (portalScope) {
+						query.innerJoin(`${query.alias}.members`, 'portalAssignee', 'portalAssignee.id = :portalEmployeeId', {
+							portalEmployeeId: portalScope.members.id
+						});
+					}
 
 					/**
 					 * If find options
@@ -1981,7 +2057,31 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * @param filters - Optional filters for advanced task filtering.
 	 * @returns A Promise that resolves to a paginated list of tasks.
 	 */
-	public async pagination(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering): Promise<IPagination<ITask>> {
+	async findManagedTeamTasks(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering): Promise<IPagination<ITask>> {
+		if (
+			process.env.DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY !== 'true' ||
+			RequestContext.currentRoleName() !== RolesEnum.MANAGER ||
+			RequestContext.currentOAuthAppScopes() !== null
+		) {
+			throw new ForbiddenException('This task list is available to portal managers.');
+		}
+
+		const employeeId = RequestContext.currentUser()?.employeeId;
+		const tenantId = RequestContext.currentTenantId();
+		const organizationId = RequestContext.currentOrganizationId();
+		if (!employeeId || !tenantId || !organizationId) {
+			return { items: [], total: 0 };
+		}
+
+		const teams = await this._managedEmployeeService.findManagedTeamIds(employeeId, tenantId, organizationId);
+		if (!teams.length) {
+			return { items: [], total: 0 };
+		}
+
+		return this.pagination({ ...options, where: { ...options.where, tenantId, organizationId } }, teams);
+	}
+
+	public async pagination(options: BaseQueryDTO<Task> & IAdvancedTaskFiltering, managedTeamIds?: ID[]): Promise<IPagination<ITask>> {
 		const filters = options?.filters;
 		const where = options?.where;
 
@@ -2017,9 +2117,12 @@ export class TaskService extends TenantAwareCrudService<Task> {
 
 			// Apply filters for teams, ensuring it uses In for array comparison
 			if (where.teams) {
+				const requestedTeamIds = where.teams as ID[];
 				options.where.teams = {
-					id: In(where.teams as ID[])
+					id: In(managedTeamIds ? managedTeamIds.filter((id) => requestedTeamIds.includes(id)) : requestedTeamIds)
 				};
+			} else if (managedTeamIds) {
+				options.where.teams = { id: In(managedTeamIds) };
 			}
 
 			// Apply filter for isScreeningTask
@@ -2033,7 +2136,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		}
 
 		// Call the base paginate method
-		return await super.paginate({ ...options, where: { ...advancedFilters, ...where } });
+		return await super.paginate({ ...options, where: { ...advancedFilters, ...where, ...this.employeePortalTaskScope() } });
 	}
 
 	/**
@@ -2382,7 +2485,8 @@ export class TaskService extends TenantAwareCrudService<Task> {
 			organizationId,
 			prefix,
 			number,
-			...(isNotEmpty(projectId) ? { projectId } : {})
+			...(isNotEmpty(projectId) ? { projectId } : {}),
+			...this.employeePortalTaskScope()
 		} as FindOptionsWhere<Task>;
 
 		// Two rows are enough to tell "one" from "more than one"; reading the rest would only cost.
@@ -2539,6 +2643,10 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		// sensitive-relation table on the client-supplied relations before anything is loaded.
 		this.assertRelationsPermitted(options);
 		assertCallerColumnsAllowed(this.typeOrmRepository?.metadata, options);
+		const portalScope = this.employeePortalTaskScope();
+		if (portalScope) {
+			options = { ...options, where: { ...options.where, ...portalScope } };
+		}
 
 		try {
 			switch (this.ormType) {
@@ -2568,6 +2676,9 @@ export class TaskService extends TenantAwareCrudService<Task> {
 					if (isNotEmpty(modules)) {
 						mikroWhere.modules = { id: { $in: modules as ID[] } };
 					}
+					if (portalScope) {
+						Object.assign(mikroWhere, portalScope);
+					}
 
 					const [items, total] = await this.mikroOrmRepository.findAndCount(mikroWhere, {
 						...(options.relations ? { populate: Object.keys(options.relations) as any[] } : {}),
@@ -2595,6 +2706,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 					// Initialize the query
 					const query = this.typeOrmRepository.createQueryBuilder(this.tableName);
 					query.leftJoin(`${query.alias}.modules`, 'modules');
+					if (portalScope) {
+						query.innerJoin(`${query.alias}.members`, 'portalAssignee', 'portalAssignee.id = :portalEmployeeId', {
+							portalEmployeeId: portalScope.members.id
+						});
+					}
 
 					// Apply find options if provided
 					if (isNotEmpty(options)) {
@@ -2699,10 +2815,11 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 */
 	async findTasksByViewQuery(viewId: ID): Promise<IPagination<ITask>> {
 		const tenantId = RequestContext.currentTenantId();
+		const portalScope = this.employeePortalTaskScope();
 		try {
 			// Retrieve Task View by ID for getting their pre-defined query params
 			const taskView = await this._taskViewService.findOneByWhereOptions({ id: viewId, tenantId });
-			if (!taskView) {
+			if (!taskView || (portalScope && taskView.organizationId && taskView.organizationId !== portalScope.organizationId)) {
 				throw new HttpException('View not found', HttpStatus.NOT_FOUND);
 			}
 
@@ -2791,7 +2908,8 @@ export class TaskService extends TenantAwareCrudService<Task> {
 				...(taskView.organizationId || organizationId
 					? { organizationId: taskView.organizationId || organizationId }
 					: {}),
-				tenantId
+				tenantId,
+				...portalScope
 			};
 
 			// Define find options
@@ -2819,6 +2937,10 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		// Builds its own query, so the check in the CRUD read methods never runs: assert the
 		// sensitive-relation table on the client-supplied relations before anything is loaded.
 		this.assertRelationsPermitted(params);
+		const portalScope = this.employeePortalTaskScope();
+		if (portalScope) {
+			params = { ...params, organizationId: portalScope.organizationId, employeeId: portalScope.members.id };
+		}
 
 		const tenantId = RequestContext.currentTenantId() || params.tenantId;
 
@@ -3263,8 +3385,9 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * resolves to nothing; a task that cannot be read answers the same.
 	 */
 	async resolveReferences(input: ITaskReferenceResolveInput): Promise<ITaskReferenceResolution[]> {
-		const tenantId = tenantIdOf(input);
-		const organizationId = organizationIdOf(input);
+		const portalScope = this.employeePortalTaskScope();
+		const tenantId = portalScope?.tenantId ?? tenantIdOf(input);
+		const organizationId = portalScope?.organizationId ?? organizationIdOf(input);
 		const projects = await this.typeOrmRepository.manager.find(OrganizationProject, {
 			where: { tenantId, organizationId },
 			select: { id: true, name: true, taskKey: true, taskKeyHistory: true }
@@ -3293,13 +3416,13 @@ export class TaskService extends TenantAwareCrudService<Task> {
 				candidates.length === 0
 					? []
 					: await this.typeOrmRepository.find({
-							where: { tenantId, organizationId, projectId: In(candidateIds), number: parts.number },
+							where: { tenantId, organizationId, projectId: In(candidateIds), number: parts.number, ...portalScope },
 							select: { id: true, title: true, status: true, projectId: true, number: true }
 						});
 			// The live numbers first: a former reference answers only when no task of those projects holds the number.
 			const formerReference = matches.length === 0 && candidates.length > 0;
 			if (formerReference) {
-				matches = await this.findTasksByFormerReference(tenantId, organizationId, candidateIds, parts.number);
+				matches = await this.findTasksByFormerReference(tenantId, organizationId, candidateIds, parts.number, portalScope?.members.id);
 			}
 			if (matches.length > 1) {
 				resolutions.push({ reference, key: parts.key, number: parts.number, resolved: false, ambiguous: true });
@@ -3339,7 +3462,13 @@ export class TaskService extends TenantAwareCrudService<Task> {
 	 * The live tasks of the organization that held `number` in one of the projects before they moved out of it, each
 	 * once (a task that moved out, back and out again holds two references there, both its own).
 	 */
-	private async findTasksByFormerReference(tenantId: ID, organizationId: ID, projectIds: ID[], number: number): Promise<Task[]> {
+	private async findTasksByFormerReference(
+		tenantId: ID,
+		organizationId: ID,
+		projectIds: ID[],
+		number: number,
+		assignedEmployeeId?: ID
+	): Promise<Task[]> {
 		const references = await this.typeOrmRepository.manager.find(TaskFormerReference, {
 			where: { tenantId, organizationId, projectId: In(projectIds), number },
 			select: { id: true, taskId: true }
@@ -3349,7 +3478,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 			return [];
 		}
 		return this.typeOrmRepository.find({
-			where: { id: In(taskIds), tenantId, organizationId },
+			where: { id: In(taskIds), tenantId, organizationId, ...(assignedEmployeeId && { members: { id: assignedEmployeeId } }) },
 			select: { id: true, title: true, status: true, projectId: true, number: true }
 		});
 	}
@@ -3366,8 +3495,9 @@ export class TaskService extends TenantAwareCrudService<Task> {
 		if (!employeeId) {
 			return { items: [], total: 0 };
 		}
-		const tenantId = tenantIdOf(query);
-		const organizationId = organizationIdOf(query);
+		const portalScope = this.employeePortalTaskScope();
+		const tenantId = portalScope?.tenantId ?? tenantIdOf(query);
+		const organizationId = portalScope?.organizationId ?? organizationIdOf(query);
 		const window = builtInViewWindow(key, new Date(), query.timeZone);
 		const where: FindOptionsWhere<Task> = {
 			tenantId,
@@ -3423,7 +3553,7 @@ export class TaskService extends TenantAwareCrudService<Task> {
 			return { items: [], total };
 		}
 		const ids = page.map((task) => task.id);
-		const rows = await this.typeOrmRepository.find({ where: { id: In(ids), tenantId, organizationId }, relations });
+		const rows = await this.typeOrmRepository.find({ where: { id: In(ids), tenantId, organizationId, ...portalScope }, relations });
 		const byId = new Map(rows.map((task) => [String(task.id), task]));
 		return { items: ids.map((id) => byId.get(String(id))).filter((task): task is Task => !!task), total };
 	}

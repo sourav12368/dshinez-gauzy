@@ -50,7 +50,7 @@
 		</div>
 	</nb-card-header>
 	<nb-card-body [class.project]="selectedProject" [nbSpinner]="loading" nbSpinnerStatus="primary" nbSpinnerSize="large">
-		<ng-template [ngxPermissionsOnly]="['ALL_ORG_VIEW', 'ORG_TASK_VIEW']">
+		<ng-template #taskBoard>
 			@switch (viewMode) {
 				@case (taskListTypeEnum.GRID) {
 					@if (dataLayoutStyle === componentLayoutStyleEnum.TABLE) {
@@ -101,6 +101,13 @@
 				}
 			}
 		</ng-template>
+		@if (isManagedPortalBoard) {
+			<ng-container [ngTemplateOutlet]="taskBoard"></ng-container>
+		} @else {
+			<ng-template [ngxPermissionsOnly]="['ALL_ORG_VIEW', 'ORG_TASK_VIEW']">
+				<ng-container [ngTemplateOutlet]="taskBoard"></ng-container>
+			</ng-template>
+		}
 	</nb-card-body>
 </nb-card>
 <ng-template #paginationTemplate let-pagination="pagination">

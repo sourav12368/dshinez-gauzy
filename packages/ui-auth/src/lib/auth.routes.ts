@@ -1,4 +1,6 @@
-import { Route } from '@angular/router';
+import { DOCUMENT } from '@angular/common';
+import { inject } from '@angular/core';
+import { CanActivateFn, Route, Router } from '@angular/router';
 import { NbLogoutComponent } from '@nebular/auth';
 import { NoAuthGuard, PageRouteRegistryService, registrationEnabledGuard } from '@gauzy/ui-core/core';
 import { NgxAuthComponent } from './components/auth/auth.component';
@@ -15,6 +17,11 @@ import { AcceptClientInviteComponent } from './components/accept-client-invite/a
 import { OAuthAuthorizeComponent } from './components/oauth-authorize/oauth-authorize.component';
 import { NgxDeleteAccountComponent } from './components/delete-account/delete-account.component';
 import { NgxDeleteAccountConfirmComponent } from './components/delete-account/delete-account-confirm.component';
+
+/** Keep self-registration closed in the D'Shinez employee portal, even when other Gauzy deployments allow it. */
+export const dshinezEmployeeOnlyRegistrationGuard: CanActivateFn = () => {
+	return inject(DOCUMENT).body.classList.contains('dshinez-app') ? inject(Router).parseUrl('/auth/login') : true;
+};
 
 /**
  * Creates routes for the auth module.
@@ -41,7 +48,7 @@ export const createAuthRoutes = (_pageRouteRegistryService: PageRouteRegistrySer
 				path: 'register',
 				component: NgxRegisterComponent,
 				// Sends visitors to sign in while the server does not accept public sign-ups.
-				canActivate: [NoAuthGuard, registrationEnabledGuard]
+				canActivate: [NoAuthGuard, registrationEnabledGuard, dshinezEmployeeOnlyRegistrationGuard]
 			},
 			{
 				path: 'request-password',

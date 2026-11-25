@@ -196,6 +196,13 @@ export class TaskController extends CrudController<Task> {
 		return this.taskService.findTeamTasks(params);
 	}
 
+	@Permissions()
+	@Get('/managed-teams')
+	@UseValidationPipe({ transform: true, whitelist: true })
+	async findManagedTeamTasks(@Query() params: TaskQueryDTO): Promise<IPagination<ITask>> {
+		return this.taskService.findManagedTeamTasks(params);
+	}
+
 	/**
 	 * GET module tasks
 	 *

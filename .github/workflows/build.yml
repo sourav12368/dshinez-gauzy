@@ -359,6 +359,9 @@ jobs:
         # unavailable. One step, so there is no `if:` on a previous step's outcome to get wrong.
         run: .github/scripts/restore-node-modules.sh
 
+      - name: Test employee assignment and manager team boundaries
+        run: node --experimental-vm-modules node_modules/jest/bin/jest.js -c packages/core/jest.config.ts --runInBand --runTestsByPath packages/core/src/lib/tasks/task.service.find-team-tasks.spec.ts
+
       - name: Test PostgreSQL migrations
         # cspell:words PGHOST PGPORT PGDATABASE
         env:
@@ -606,6 +609,9 @@ jobs:
         run: |
           yarn config:dev
           node node_modules/jest/bin/jest.js -c packages/plugins/integration-ever-works-ui/jest.config.ts --runInBand
+
+      - name: Test portal landing pages by role and hostname
+        run: node node_modules/jest/bin/jest.js -c apps/gauzy/jest.config.ts --runInBand --runTestsByPath apps/gauzy/src/app/pages/pages.routes.spec.ts
 
   build-desktop:
     name: build-desktop

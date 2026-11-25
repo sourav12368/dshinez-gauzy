@@ -1,7 +1,9 @@
 import '../core/entities/internal';
 
-import { IUser, PermissionsEnum } from '@gauzy/contracts';
+import { IUser, PermissionsEnum, RolesEnum } from '@gauzy/contracts';
+import { RequestContext } from '../core/context';
 import { CrudService } from '../core/crud/crud.service';
+import { TenantAwareCrudService } from '../core/crud/tenant-aware-crud.service';
 import { MultiORMEnum } from '../core/utils';
 import { asTenantUser, createTenantFixture } from '../core/testing/tenant-isolation/tenant-isolation.fixtures';
 import { TaskService } from './task.service';
@@ -19,6 +21,8 @@ describe('TaskService.findTeamTasks (MikroORM) — employee scoping', () => {
 	let restore: () => void;
 	let findAndCount: jest.Mock;
 	let createQueryBuilder: jest.Mock;
+	let findManagedTeamIds: jest.Mock;
+	let findSavedView: jest.Mock;
 	let service: TaskService;
 
 	const teamTasks = (members?: { id: string }, filters?: Record<string, unknown>) =>
@@ -34,7 +38,9 @@ describe('TaskService.findTeamTasks (MikroORM) — employee scoping', () => {
 		jest.spyOn(TaskService.prototype as any, 'serialize').mockImplementation((entity: object) => ({ ...entity }));
 		findAndCount = jest.fn().mockResolvedValue([[], 0]);
 		createQueryBuilder = jest.fn();
-		const stub = {};
+		findManagedTeamIds = jest.fn();
+		findSavedView = jest.fn();
+		const stub = { findManagedTeamIds, findOneByWhereOptions: findSavedView };
 		service = new TaskService(
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			{ metadata: { tableName: 'task' }, createQueryBuilder } as any,
@@ -57,6 +63,131 @@ describe('TaskService.findTeamTasks (MikroORM) — employee scoping', () => {
 	afterEach(() => {
 		restore?.();
 		jest.restoreAllMocks();
+	});
+
+	it('limits My Tasks to direct assignments even when the caller can select another employee', async () => {
+		({ restore } = asTenantUser(employee, { permissions: [PermissionsEnum.CHANGE_SELECTED_EMPLOYEE] }));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+
+		await service.getMyTasks({
+			where: { organizationId: employee.organizationId, members: { id: 'someone-else' } }
+		});
+
+		expect(where().members).toEqual({ id: 'employee-1' });
+		expect(where().$or).toBeUndefined();
+	});
+
+	it('returns no My Tasks for a user without an employee record', async () => {
+		({ restore } = asTenantUser(noEmployee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+
+		await expect(service.getMyTasks({ where: { organizationId: employee.organizationId } })).resolves.toEqual({
+			items: [],
+			total: 0
+		});
+		expect(findAndCount).not.toHaveBeenCalled();
+	});
+
+	it('scopes a direct employee task link to the signed-in organization and employee', async () => {
+		({ restore } = asTenantUser(employee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+		jest.spyOn(RequestContext, 'hasRole').mockReturnValue(true);
+		jest.spyOn(RequestContext, 'currentOrganizationId').mockReturnValue(employee.organizationId);
+		const findTask = jest.spyOn(service, 'findOneByIdString').mockRejectedValue(new Error('task not found'));
+
+		await expect(service.findById('task', { where: {} })).rejects.toThrow('task not found');
+		expect(findTask).toHaveBeenCalledWith('task', {
+			where: {
+				tenantId: employee.tenantId,
+				organizationId: employee.organizationId,
+				members: { id: 'employee-1' }
+			}
+		});
+	});
+
+	it.each([
+		['team', (tasks: TaskService) => tasks.findTeamTasks({ where: { organizationId: 'other' } })],
+		['module', (tasks: TaskService) => tasks.findModuleTasks({ where: { organizationId: 'other' } })],
+		['date', (tasks: TaskService) => tasks.getTasksByDateFilters({ organizationId: 'other', employeeId: 'other' } as never)]
+	] as const)('limits the %s task list to the employee’s assignments', async (_view, read) => {
+		({ restore } = asTenantUser(employee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+		jest.spyOn(RequestContext, 'hasRole').mockReturnValue(true);
+		jest.spyOn(RequestContext, 'currentOrganizationId').mockReturnValue(employee.organizationId);
+
+		await read(service);
+
+		expect(where()).toEqual(expect.objectContaining({
+			tenantId: employee.tenantId,
+			organizationId: employee.organizationId,
+			members: { id: 'employee-1' }
+		}));
+	});
+
+	it('intersects team filters with the teams the signed-in manager manages', async () => {
+		({ restore } = asTenantUser(employee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+		jest.spyOn(RequestContext, 'currentRoleName').mockReturnValue(RolesEnum.MANAGER);
+		jest.spyOn(RequestContext, 'currentOrganizationId').mockReturnValue(employee.organizationId);
+		findManagedTeamIds.mockResolvedValue(['managed-team', 'other-managed-team']);
+		const paginate = jest.spyOn(TenantAwareCrudService.prototype, 'paginate').mockResolvedValue({ items: [], total: 0 });
+
+		await service.findManagedTeamTasks({ where: { teams: ['managed-team', 'unmanaged-team'] } } as never);
+
+		expect(findManagedTeamIds).toHaveBeenCalledWith('employee-1', employee.tenantId, employee.organizationId);
+		expect(paginate).toHaveBeenCalledWith({
+			where: {
+				tenantId: employee.tenantId,
+				organizationId: employee.organizationId,
+				isScreeningTask: false,
+				teams: { id: expect.objectContaining({ value: ['managed-team'] }) }
+			}
+		});
+	});
+
+	it('denies the managed board to employees before loading memberships', async () => {
+		({ restore } = asTenantUser(employee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+		jest.spyOn(RequestContext, 'currentRoleName').mockReturnValue(RolesEnum.EMPLOYEE);
+
+		await expect(service.findManagedTeamTasks({ where: {} })).rejects.toThrow('available to portal managers');
+		expect(findManagedTeamIds).not.toHaveBeenCalled();
+	});
+
+	it('filters saved-view task results independently of the filters stored on the view', async () => {
+		({ restore } = asTenantUser(employee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+		jest.spyOn(RequestContext, 'hasRole').mockReturnValue(true);
+		jest.spyOn(RequestContext, 'currentOrganizationId').mockReturnValue(employee.organizationId);
+		findSavedView.mockResolvedValue({ organizationId: employee.organizationId, queryParams: null });
+		const findAll = jest.spyOn(TenantAwareCrudService.prototype, 'findAll').mockResolvedValue({ items: [], total: 0 });
+
+		await service.findTasksByViewQuery('saved-view');
+
+		expect(findAll).toHaveBeenCalledWith(expect.objectContaining({
+			where: expect.objectContaining({
+				tenantId: employee.tenantId,
+				organizationId: employee.organizationId,
+				members: { id: 'employee-1' }
+			})
+		}));
+	});
+
+	it('requires the employee assignment when loading a task for an update', async () => {
+		({ restore } = asTenantUser(employee));
+		jest.replaceProperty(process, 'env', { ...process.env, DSHINEZ_EMPLOYEE_ASSIGNED_TASKS_ONLY: 'true' });
+		jest.spyOn(RequestContext, 'hasRole').mockReturnValue(true);
+		jest.spyOn(RequestContext, 'currentOrganizationId').mockReturnValue(employee.organizationId);
+		const findTask = jest.spyOn(service, 'findOneByIdString').mockRejectedValue(new Error('Task unavailable'));
+
+		await expect(service.update('unassigned-task', { title: 'Updated task' })).rejects.toThrow('Task unavailable');
+		expect(findTask).toHaveBeenCalledWith('unassigned-task', expect.objectContaining({
+			where: {
+				tenantId: employee.tenantId,
+				organizationId: employee.organizationId,
+				members: { id: 'employee-1' }
+			}
+		}));
 	});
 
 	it('limits an employee without CHANGE_SELECTED_EMPLOYEE to their own teams, whatever members.id says', async () => {
